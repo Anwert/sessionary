@@ -36,11 +36,20 @@
     .overlay { position:fixed; inset:0 0 58px; z-index:15; background:#080c10f2; display:grid; place-items:center; }
     .overview { width:min(1050px,90vw); }
     .overview h1 { font-size:20px; }
+    .overview-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .filters,.actions { display:flex; gap:7px; }
+    .chip { border:1px solid var(--line); background:var(--panel); padding:5px 8px; cursor:pointer; }
+    .chip.active { color:#10151b; background:var(--accent); }
     .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
     .card { padding:14px; border:1px solid var(--line); background:var(--panel); cursor:pointer; min-height:110px; }
     .card.selected { outline:2px solid var(--accent); }
     .drawer { position:fixed; z-index:14; top:0; right:0; bottom:58px; width:min(440px,48vw); border-left:1px solid var(--line); box-shadow:-20px 0 50px #0008; }
     .drawer .session { padding:14px; }
+    .drawer-detail { margin:12px; padding:14px; border:1px solid var(--line); background:#0c1219; }
+    .drawer-detail h2 { margin:0 0 4px; font-size:15px; }
+    .progress { height:5px; margin:10px 0; background:#26313d; }
+    .progress i { display:block; height:100%; background:var(--accent); }
+    .keyline { margin-top:14px; color:var(--muted); font-size:11px; }
     .statusbar { position:fixed; z-index:12; left:0; right:0; bottom:58px; height:34px; display:flex; align-items:center; gap:18px; padding:0 14px; background:#17202a; border-top:1px solid var(--line); }
     .statusbar .attention { color:#111; background:var(--warn); padding:2px 7px; cursor:pointer; }
     .panes { grid-template-columns:1fr 1fr; gap:1px; background:var(--line); }
@@ -64,39 +73,47 @@
       ['panes','E','Spatial panes'], ['leader','F','Leader navigation']
     ];
     const sessions = [
-      {id:'auth', key:'a', name:'Fix OAuth callback', group:'Release 2.4', state:'working', harness:'Claude Code', context:68, detail:'Refactoring callback validation and running integration tests.'},
-      {id:'billing', key:'b', name:'Investigate billing retry', group:'Release 2.4', state:'input', harness:'Codex', context:41, detail:'I need your choice: retry failed invoices immediately, or preserve the current nightly batch?'},
-      {id:'docs', key:'d', name:'Refresh onboarding docs', group:'Website', state:'finished', harness:'Claude Code', context:87, detail:'Onboarding rewrite is complete. Ready to review or resume.'},
-      {id:'search', key:'s', name:'Prototype fuzzy search', group:'Ungrouped', state:'working', harness:'Codex', context:23, detail:'Comparing scoring behavior on short session names.'},
-      {id:'perf', key:'p', name:'Trace startup regression', group:'Website', state:'input', harness:'Claude Code', context:76, detail:'Which baseline should I use: last release or the pre-router commit?'}
+      {id:'auth', key:'a', name:'Fix OAuth callback', group:'Release 2.4', state:'working', harness:'Claude Code', context:68, repo:'web-api', branch:'fix/oauth-callback', age:'18m', detail:'Refactoring callback validation and running integration tests.'},
+      {id:'billing', key:'b', name:'Investigate billing retry', group:'Release 2.4', state:'input', harness:'Codex', context:41, repo:'billing', branch:'investigate/retries', age:'7m', detail:'I need your choice: retry failed invoices immediately, or preserve the current nightly batch?'},
+      {id:'docs', key:'d', name:'Refresh onboarding docs', group:'Website', state:'finished', harness:'Claude Code', context:87, repo:'website', branch:'docs/onboarding', age:'1h', detail:'Onboarding rewrite is complete. Ready to review or resume.'},
+      {id:'search', key:'s', name:'Prototype fuzzy search', group:'Ungrouped', state:'working', harness:'Codex', context:23, repo:'sessionary', branch:'prototype/search', age:'4m', detail:'Comparing scoring behavior on short session names.'},
+      {id:'perf', key:'p', name:'Trace startup regression', group:'Website', state:'input', harness:'Claude Code', context:76, repo:'website', branch:'perf/startup', age:'32m', detail:'Which baseline should I use: last release or the pre-router commit?'}
     ];
-    let state = { selected:'auth', previous:null, overlay:false, toast:'', leader:false };
+    let state = { selected:'auth', previous:null, overlay:false, toast:'', leader:false, filter:'all' };
     const params = new URLSearchParams(location.search);
     let variant = variants.some(v => v[0] === params.get('variant')) ? params.get('variant') : 'sidebar';
     const current = () => sessions.find(s => s.id === state.selected);
     const stateLabel = s => s.state === 'input' ? 'Needs input' : s.state[0].toUpperCase()+s.state.slice(1);
     const sessionRow = s => `<button class="session ${s.id===state.selected?'selected':''}" data-session="${s.id}"><i class="dot ${s.state}"></i><span>${s.name}<div class="meta">${s.harness} · ${stateLabel(s)}</div></span><span class="context">${s.context}%</span></button>`;
+    const previewRow = s => `<button class="session ${s.id===state.selected?'selected':''}" data-preview="${s.id}"><i class="dot ${s.state}"></i><span>${s.name}<div class="meta">${s.harness} · ${stateLabel(s)}</div></span><span class="context">${s.context}%</span></button>`;
     const terminal = (s=current()) => `<main class="terminal"><div class="term-head">${s.group} / ${s.name} · ${s.harness} · context ${s.context}%</div><div class="agent"><span class="prompt">assistant ›</span> ${s.detail}\n\n<span class="prompt">you ›</span> <span class="cursor"></span></div></main>`;
     const grouped = () => ['Release 2.4','Website','Ungrouped'].map(g => `<div class="section-title">${g}</div>${sessions.filter(s=>s.group===g).map(sessionRow).join('')}`).join('');
     function shell() {
       if (variant === 'sidebar') return `<div class="app" style="grid-template-columns:300px 1fr"><aside class="panel"><div class="brand">SESSIONARY <span class="notice">· 2</span></div>${grouped()}</aside>${terminal()}</div><div class="hint"><kbd>j/k</kbd> move · <kbd>Enter</kbd> focus · <kbd>r</kbd> return</div>`;
-      if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div><div class="hint"><kbd>Space</kbd> overview · arrows move · <kbd>Enter</kbd> focus · <kbd>r</kbd> return</div>`;
-      if (variant === 'drawer') return `<div class="app">${terminal()}${state.overlay?`<aside class="drawer panel"><div class="brand">SESSIONS <span class="notice">· 2 need input</span></div>${grouped()}</aside>`:''}</div><div class="hint"><kbd>Ctrl+k</kbd> drawer · <kbd>j/k</kbd> move · <kbd>Enter</kbd> focus · <kbd>r</kbd> return</div>`;
+      if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div><div class="hint"><kbd>Space</kbd> overview · <kbd>t</kbd> attention filter · <kbd>f</kbd> finish · <kbd>Enter</kbd> focus</div>`;
+      if (variant === 'drawer') return `<div class="app">${terminal()}${state.overlay?drawer():''}</div><div class="hint"><kbd>Ctrl+k</kbd> drawer · <kbd>j/k</kbd> inspect · <kbd>f</kbd> finish · <kbd>Enter</kbd> focus</div>`;
       if (variant === 'status') return `<div class="app">${terminal()}<div class="statusbar"><strong>Sessionary</strong><span>${sessions.filter(s=>s.state==='working').length} working</span><button class="attention" id="nextInput">2 need input · jump ↵</button><span>context ${current().context}%</span><span style="margin-left:auto">${current().name}</span></div></div><div class="hint"><kbd>Alt+n</kbd> next input · <kbd>r</kbd> return</div>`;
       if (variant === 'panes') return `<div class="app panes"><section class="pane"><div class="term-head">1 · ${current().name} · ${current().context}%</div>${terminal(current()).replace(/<main[^>]*>|<\/main>/g,'')}</section><section class="pane attention"><div class="term-head notice">2 · ${sessions[1].name} · Needs input · ${sessions[1].context}%</div>${terminal(sessions[1]).replace(/<main[^>]*>|<\/main>/g,'')}</section></div><div class="hint"><kbd>Ctrl+w</kbd> then arrow · <kbd>r</kbd> return</div>`;
-      return `<div class="app">${terminal()}${state.leader?leader():''}</div><div class="hint"><kbd>Ctrl+Space</kbd> leader · then session key · <kbd>r</kbd> return</div>`;
+      return `<div class="app">${terminal()}${state.leader?leader():''}</div><div class="hint"><kbd>Ctrl+g</kbd> leader · then session key · <kbd>r</kbd> return</div>`;
     }
-    function overview() { return `<div class="overlay"><section class="overview"><h1>All sessions <span class="notice">· 2 need input</span></h1><div class="grid">${sessions.map(s=>`<article class="card ${s.id===state.selected?'selected':''}" data-session="${s.id}"><i class="dot ${s.state}" style="display:inline-block"></i> <strong>${s.name}</strong><div class="meta">${s.group} · ${s.harness}</div><p>${stateLabel(s)}</p><span class="context">context ${s.context}%</span></article>`).join('')}</div></section></div>`; }
+    function overview() { const visible=state.filter==='input'?sessions.filter(s=>s.state==='input'):sessions; return `<div class="overlay"><section class="overview"><div class="overview-head"><h1>All sessions <span class="notice">· ${sessions.filter(s=>s.state==='input').length} need input</span></h1><div class="filters"><button class="chip ${state.filter==='all'?'active':''}" data-filter="all">1 All</button><button class="chip ${state.filter==='input'?'active':''}" data-filter="input">2 Needs input</button></div></div><div class="grid">${visible.map(s=>`<article class="card ${s.id===state.selected?'selected':''}" data-preview="${s.id}"><i class="dot ${s.state}" style="display:inline-block"></i> <strong>${s.name}</strong><div class="meta">${s.group} · ${s.harness} · ${s.age}</div><p>${stateLabel(s)}</p><div class="meta">${s.repo} · ${s.branch}</div><div class="progress"><i style="width:${s.context}%"></i></div><span class="context">context ${s.context}%</span></article>`).join('')}</div><div class="keyline"><kbd>j/k</kbd> inspect · <kbd>Enter</kbd> focus · <kbd>f</kbd> finish/resume · <kbd>r</kbd> return</div></section></div>`; }
+    function drawer() { const s=current(); return `<aside class="drawer panel"><div class="brand">SESSIONS <span class="notice">· ${sessions.filter(s=>s.state==='input').length} need input</span></div>${['Release 2.4','Website','Ungrouped'].map(g=>`<div class="section-title">${g}</div>${sessions.filter(s=>s.group===g).map(previewRow).join('')}`).join('')}<section class="drawer-detail"><h2>${s.name}</h2><div class="meta">${s.repo} · ${s.branch} · active ${s.age}</div><div class="progress"><i style="width:${s.context}%"></i></div><p>${s.detail}</p><div class="actions"><button class="chip" id="focusSession">Enter focus</button><button class="chip" id="toggleFinished">${s.state==='finished'?'Resume':'Mark finished'}</button></div></section></aside>`; }
     function leader() { return `<section class="leader panel"><h2>Sessionary leader</h2><div class="leader-grid">${sessions.map(s=>`<button class="leader-key" data-session="${s.id}"><kbd>${s.key}</kbd> ${s.name}<div class="meta">${stateLabel(s)} · ${s.context}%</div></button>`).join('')}</div></section>`; }
     function switcher() { const i=variants.findIndex(v=>v[0]===variant), v=variants[i]; return `<nav class="switcher"><button id="prev" aria-label="Previous variant">←</button><span>${v[1]} · ${v[2]} (${i+1}/6)</span><button id="next" aria-label="Next variant">→</button></nav>`; }
     function render() {
       document.getElementById('root').innerHTML = shell() + (state.toast?`<div class="toast">${state.toast}</div>`:'') + switcher();
       document.querySelectorAll('[data-session]').forEach(el => el.onclick=()=>select(el.dataset.session));
+      document.querySelectorAll('[data-preview]').forEach(el => el.onclick=()=>preview(el.dataset.preview));
+      document.querySelectorAll('[data-filter]').forEach(el => el.onclick=()=>{ state.filter=el.dataset.filter; render(); });
       document.getElementById('prev').onclick=()=>cycle(-1); document.getElementById('next').onclick=()=>cycle(1);
       document.getElementById('nextInput')?.addEventListener('click', nextInput);
+      document.getElementById('focusSession')?.addEventListener('click', ()=>select(state.selected));
+      document.getElementById('toggleFinished')?.addEventListener('click', toggleFinished);
     }
     function select(id) { if(id!==state.selected) state.previous=state.selected; state.selected=id; state.overlay=false; state.leader=false; state.toast=`Focused ${current().name}`; render(); }
+    function preview(id) { state.selected=id; render(); }
     function move(delta) { let i=sessions.findIndex(s=>s.id===state.selected); state.selected=sessions[(i+delta+sessions.length)%sessions.length].id; render(); }
+    function toggleFinished() { const s=current(); s.state=s.state==='finished'?'working':'finished'; state.toast=`${s.name}: ${stateLabel(s)}`; render(); }
     function cycle(delta) { let i=variants.findIndex(v=>v[0]===variant); variant=variants[(i+delta+variants.length)%variants.length][0]; const u=new URL(location); u.searchParams.set('variant',variant); history.replaceState({},'',u); state.overlay=false; state.leader=false; state.toast=''; render(); }
     function nextInput() { const needs=sessions.filter(s=>s.state==='input'); let i=needs.findIndex(s=>s.id===state.selected); select(needs[(i+1+needs.length)%needs.length].id); }
     addEventListener('keydown', e => {
@@ -106,10 +123,12 @@
       if(variant==='sidebar' && ['j','k'].includes(e.key)) move(e.key==='j'?1:-1);
       if(variant==='overview' && e.code==='Space') { e.preventDefault(); state.overlay=!state.overlay; render(); }
       if(variant==='overview' && state.overlay && ['j','k'].includes(e.key)) move(e.key==='j'?1:-1);
+      if(variant==='overview' && state.overlay && e.key==='t') { state.filter=state.filter==='all'?'input':'all'; render(); }
       if(variant==='drawer' && e.ctrlKey && e.key==='k') { e.preventDefault(); state.overlay=!state.overlay; render(); }
       if(variant==='drawer' && state.overlay && ['j','k'].includes(e.key)) move(e.key==='j'?1:-1);
+      if(['overview','drawer'].includes(variant) && (state.overlay||state.leader) && e.key==='f') toggleFinished();
       if(variant==='status' && e.altKey && e.key==='n') { e.preventDefault(); nextInput(); }
-      if(variant==='leader' && e.ctrlKey && e.code==='Space') { e.preventDefault(); state.leader=!state.leader; render(); }
+      if(variant==='leader' && e.ctrlKey && e.key==='g') { e.preventDefault(); state.leader=!state.leader; render(); }
       if(variant==='leader' && state.leader) { const s=sessions.find(s=>s.key===e.key); if(s) select(s.id); }
       if(e.key==='Enter' && (state.overlay||state.leader)) select(state.selected);
     });
