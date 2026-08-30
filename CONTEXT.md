@@ -15,35 +15,24 @@ _Avoid_: Provider, agent
 **Turn**:
 A span of Harness work initiated by a user instruction and ending when the Harness completes or fails its response. A Turn may pause while the Harness needs a decision, approval, or further instruction from the user.
 
+**Harness conversation**:
+An independently resumable conversation that a Harness adapter exposes to Sessionary. A Session may be linked to multiple Harness conversations over its lifetime.
+
+**Harness conversation ID**:
+A stable, opaque identifier assigned by a Harness adapter to a Harness conversation. It is meaningful only together with the Harness adapter identity.
+
+**Conversation binding**:
+The association of one Harness conversation with one Session. A Session may have many conversation bindings, while a Harness conversation may be bound to at most one Session.
+
 **Group**:
-A user-defined collection of related sessions, independent of repository or directory boundaries. A session may belong to at most one group or remain ungrouped.
+A user-defined collection of related Sessions, independent of repository or directory boundaries. A Session may belong to at most one Group or remain ungrouped.
 _Avoid_: Mission, workspace, context
 
 **Session name**:
 An automatically suggested, user-editable label by which a session is identified in the interface.
 
-## Session states
+**Session state**:
+The single, mutually exclusive state of a Session: `Working`, `Idle`, `Needs input`, `Missing`, or `Finished`. `Needs input` includes a Harness waiting for the user or not reliably classifiable as `Working` or `Idle`; `Missing` means an expected live runtime disappeared; `Active` collectively describes `Working`, `Idle`, and `Needs input` rather than being another state.
 
-**Working**:
-The Session state in which its Harness is performing a turn.
-
-**Needs input**:
-The Session state in which its Harness is waiting for a decision, approval, or instruction from the user.
-_Avoid_: Waiting
-
-**Idle**:
-The Session state in which its Harness is live but is neither performing a turn nor requiring the user's attention.
-
-**Finished**:
-The Session state in which its work is explicitly complete and its live Harness has stopped, while its identity is retained for later resumption.
-
-**Active session**:
-A collective term for a Working, Needs input, or Idle Session. Active is not a separate Session state.
-
-## Group states
-
-**Active**:
-The Group state in which it is available for ongoing work.
-
-**Finished**:
-The Group state in which it has been explicitly completed after all of its Sessions are Finished. Its Sessions remain individually resumable.
+**Group state**:
+The single, mutually exclusive state of a Group: `Active` or `Finished`. A Group may be `Finished` only after all of its Sessions are `Finished`; its Sessions remain individually resumable.
