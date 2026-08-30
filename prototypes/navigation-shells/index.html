@@ -34,6 +34,7 @@
     .overview { width:min(1180px,94vw); height:calc(100vh - 100px); overflow:auto; padding:0 6px 36px; }
     .overview h1 { font-size:20px; }
     .overview-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .board-track { padding: max(0px, calc(50vh - 120px)) 0; }
     .filters,.actions { display:flex; gap:7px; }
     .chip { border:1px solid var(--line); background:var(--panel); padding:5px 8px; cursor:pointer; }
     .chip.active { color:#10151b; background:var(--accent); }
@@ -118,7 +119,7 @@
         const content=!items.length ? '<p class="meta">No Sessions. Press n to create one or m to move the selected Session here.</p>' : `<div class="grid">${items.map(card).join('')}</div>`;
         return `<section class="group-block"><div class="group-head"><strong>${groupTitle(g)}</strong><span>${items.length} Session${items.length===1?'':'s'}</span></div>${content}</section>`;
       }).join('');
-      return `<div class="overlay"><section class="overview"><div class="overview-head"><h1>Showing ${visible.length} of ${sessions.length} Sessions across ${groups().length} Groups <span class="notice">· ${activeSessions().filter(s=>s.state==='input').length} need input</span></h1><div class="filters"><button class="chip ${state.filter==='all'?'active':''}" data-filter="all">1 All</button><button class="chip ${state.filter==='input'?'active':''}" data-filter="input">2 Needs input</button><button class="chip ${state.filter==='archive'?'active':''}" data-filter="archive">3 Archive</button></div></div>${blocks||'<p class="meta">No Sessions in this view.</p>'}</section></div>`;
+      return `<div class="overlay"><section class="overview"><div class="overview-head"><h1>Showing ${visible.length} of ${sessions.length} Sessions across ${groups().length} Groups <span class="notice">· ${activeSessions().filter(s=>s.state==='input').length} need input</span></h1><div class="filters"><button class="chip ${state.filter==='all'?'active':''}" data-filter="all">1 All</button><button class="chip ${state.filter==='input'?'active':''}" data-filter="input">2 Needs input</button><button class="chip ${state.filter==='archive'?'active':''}" data-filter="archive">3 Archive</button></div></div><div class="board-track">${blocks||'<p class="meta">No Sessions in this view.</p>'}</div></section></div>`;
     }
     function workspace() { return ''; }
     function render() {
@@ -131,20 +132,22 @@
       document.getElementById('sessionSearch')?.addEventListener('input', e=>{ state.query=e.target.value; render(); document.getElementById('sessionSearch')?.focus(); });
       const drawerList=document.getElementById('drawerList');
       if(drawerList) { drawerList.scrollTop=state.drawerScroll; drawerList.addEventListener('scroll',()=>{ state.drawerScroll=drawerList.scrollTop; }); }
+      if(state.overlay) requestAnimationFrame(centerSelected);
     }
     function select(id) { if(id!==state.selected) state.previous=state.selected; state.selected=id; state.overlay=false; state.inHarness=variant==='workspace'; state.toast=`Focused ${current().name}`; render(); }
     function preview(id) { state.selected=id; render(); }
     function move(delta) { let i=sessions.findIndex(s=>s.id===state.selected); state.selected=sessions[(i+delta+sessions.length)%sessions.length].id; render(); document.querySelector('.drawer-list .session.selected')?.scrollIntoView({block:'nearest'}); }
     function jumpEdge(last=false) { state.selected=sessions[last?sessions.length-1:0].id; render(); scrollSelected(); }
     function jumpGroup(delta) { const names=groups(); let i=names.indexOf(current().group); const group=names[Math.max(0,Math.min(names.length-1,i+delta))]; state.selected=sessions.find(s=>s.group===group).id; render(); scrollSelected(); }
-    function scrollSelected() { document.querySelector('.drawer-list .session.selected, .workspace tr.selected')?.scrollIntoView({block:'center'}); }
-    function moveOverview(direction) { const cards=[...document.querySelectorAll('.overview .card')]; const active=document.querySelector('.overview .card.selected')||cards[0]; if(!active) return; const a=active.getBoundingClientRect(), ax=a.left+a.width/2, ay=a.top+a.height/2; const candidates=cards.filter(c=>c!==active).map(c=>{const r=c.getBoundingClientRect(),dx=r.left+r.width/2-ax,dy=r.top+r.height/2-ay;const primary=direction==='left'?-dx:direction==='right'?dx:direction==='up'?-dy:dy;const cross=['left','right'].includes(direction)?Math.abs(dy):Math.abs(dx);return {c,primary,cross};}).filter(x=>x.primary>2).sort((x,y)=>(x.primary*10+x.cross)-(y.primary*10+y.cross)); if(!candidates.length)return; state.selected=candidates[0].c.dataset.preview; render(); document.querySelector('.overview .card.selected')?.scrollIntoView({block:'nearest'}); }
+    function centerSelected() { document.querySelector('.overview .card.selected, .drawer-list .session.selected, .workspace tr.selected')?.scrollIntoView({block:'center',inline:'center'}); }
+    function scrollSelected() { centerSelected(); }
+    function moveOverview(direction) { const cards=[...document.querySelectorAll('.overview .card')]; const active=document.querySelector('.overview .card.selected')||cards[0]; if(!active) return; const a=active.getBoundingClientRect(), ax=a.left+a.width/2, ay=a.top+a.height/2; const candidates=cards.filter(c=>c!==active).map(c=>{const r=c.getBoundingClientRect(),dx=r.left+r.width/2-ax,dy=r.top+r.height/2-ay;const primary=direction==='left'?-dx:direction==='right'?dx:direction==='up'?-dy:dy;const cross=['left','right'].includes(direction)?Math.abs(dy):Math.abs(dx);return {c,primary,cross};}).filter(x=>x.primary>2).sort((x,y)=>(x.primary*10+x.cross)-(y.primary*10+y.cross)); if(!candidates.length)return; state.selected=candidates[0].c.dataset.preview; render(); }
     function toggleFinished() { const s=current(); s.state=s.state==='finished'?'working':'finished'; state.toast=`${s.name}: ${stateLabel(s)}`; render(); }
     function createGroup() { const name=prompt('Group name:','New Group')?.trim(); if(!name||groupNames.includes(name)) return; groupNames.push(name); state.toast=`Created Group ${name}`; render(); }
     function createSession() { const name=prompt('Session name (suggested, editable):','New Session')?.trim(); if(!name) return; const harnesses=['Claude Code','Codex']; const choice=prompt(`Choose Harness:\n${harnesses.map((harness,i)=>`${i+1}  ${harness}`).join('\n')}`,'2'); if(choice===null) return; const harness=harnesses[Number(choice)-1]; if(!harness) return; const group=current()?.group||''; sessions.push({id:`session-${Date.now()}`,name,group,state:'working',harness,context:1,repo:'current repository',branch:'current branch',age:'now',detail:'New Session ready for its first instruction.'}); state.selected=sessions.at(-1).id; state.filter='all'; state.toast=`Created ${name} in ${groupTitle(group)}`; render(); }
     function renameSession() { const s=current(),name=prompt('Session name:',s.name)?.trim(); if(name){s.name=name;state.toast=`Renamed to ${name}`;render();} }
     function startMove() { state.moveFrom=current().group||''; state.toast='Move mode: ←/→ choose Group · Enter confirm · Esc cancel'; render(); }
-    function moveSession(delta) { const s=current(),targets=['',...groupNames],i=targets.indexOf(s.group||''); s.group=targets[(i+delta+targets.length)%targets.length]; state.toast=`Move to ${groupTitle(s.group)} · Enter confirm · Esc cancel`; render(); document.querySelector('.overview .card.selected')?.scrollIntoView({block:'center'}); }
+    function moveSession(delta) { const s=current(),targets=['',...groupNames],i=targets.indexOf(s.group||''); s.group=targets[(i+delta+targets.length)%targets.length]; state.toast=`Move to ${groupTitle(s.group)} · Enter confirm · Esc cancel`; render(); }
     function finishMove(cancel=false) { const s=current(); if(cancel) s.group=state.moveFrom; state.moveFrom=undefined; state.toast=cancel?'Move cancelled':`Moved ${s.name} to ${groupTitle(s.group)}`; render(); }
     function archiveSession() { const s=current(); s.beforeArchive=s.state; s.state='archived'; state.toast=`Archived ${s.name}`; const next=visibleSessions()[0]; if(next) state.selected=next.id; render(); }
     function restoreSession() { const s=current(); if(s.state!=='archived') return; s.state=s.beforeArchive||'finished'; state.filter='all'; state.toast=`Restored ${s.name} to ${stateLabel(s)}`; render(); }
