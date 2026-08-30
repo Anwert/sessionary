@@ -29,7 +29,12 @@ When your output names a domain concept (in an issue title, a refactor proposal,
 
 If the concept you need isn't in the glossary yet, reconsider whether you're inventing language the project doesn't use or note the real gap for `/domain-modeling`.
 
+## Keep canonical domain docs on main
+
+`CONTEXT.md` and `docs/adr/` are shared sources of truth. Apply resolved domain-language and architecture-decision changes against the latest `origin/main` and push them to `main` promptly. If the current checkout is a research, prototype, or other working branch, use a temporary worktree based on `origin/main`; keep the artifact branch focused on its artifact, then sync it from `main` when needed.
+
+Before editing, fetch `origin/main`. Before pushing, incorporate any newer `main` change and resolve overlapping edits from their primary decisions. Completion means the canonical files are present on `origin/main`, not merely committed on the current working branch.
+
 ## Flag ADR conflicts
 
 If your output contradicts an existing ADR, surface it explicitly rather than silently overriding it.
-

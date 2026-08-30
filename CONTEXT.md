@@ -28,6 +28,17 @@ The association of one Harness conversation with one Session. A Session may have
 A user-defined collection of related Sessions, independent of repository or directory boundaries. A Session may belong to at most one Group or remain ungrouped.
 _Avoid_: Mission, workspace, context
 
+**Board**:
+The ordered overview through which Sessions are scanned, selected, created, and reorganized.
+_Avoid_: Layout, workspace
+
+**Lane**:
+The Board representation of either a Group or a system-defined collection of Sessions. Lanes provide uniform ordering and navigation without implying Group membership.
+
+**Ungrouped**:
+The absence of Group membership for a Session, presented on the Board through the system-defined Lane pinned at the top.
+_Avoid_: Standalone
+
 **Session name**:
 An automatically suggested, user-editable label by which a session is identified in the interface.
 
