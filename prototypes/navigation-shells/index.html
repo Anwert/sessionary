@@ -97,7 +97,7 @@
       {id:'logs', name:'Reduce noisy API logs', group:'Maintenance', state:'working', harness:'Codex', context:61, repo:'web-api', branch:'chore/log-volume', age:'36m', detail:'Sampling repeated health-check and retry messages.'},
       {id:'secrets', name:'Rotate staging secrets', group:'Maintenance', state:'finished', harness:'Claude Code', context:18, repo:'ops', branch:'ops/secret-rotation', age:'3h', detail:'Rotation completed and old credentials revoked.'}
     ];
-    let state = { selected:'auth', selectedGroup:null, previous:null, overlay:true, showHelp:true, toast:'', filter:'all', query:'', inHarness:false, drawerScroll:0, moveFrom:undefined, reorderFrom:undefined };
+    let state = { selected:'auth', selectedGroup:null, previous:null, overlay:true, showHelp:true, toast:'', filter:'all', query:'', inHarness:false, drawerScroll:0 };
     let toastTimer;
     const variant = 'overview';
     const current = () => sessions.find(s => s.id === state.selected);
@@ -107,30 +107,32 @@
     const previewRow = s => `<button class="session ${s.id===state.selected?'selected':''}" data-preview="${s.id}"><i class="dot ${dotClass(s)}"></i><span>${s.name}<div class="meta">${s.harness} · ${stateLabel(s)}</div></span><span class="context">${s.context}%</span></button>`;
     const groupTitle = group => group || 'Ungrouped';
     const terminal = (s=current()) => `<main class="terminal"><div class="term-head">${groupTitle(s.group)} / ${s.name} · ${s.harness} · context ${s.context}%</div><div class="agent"><span class="prompt">assistant ›</span> ${s.detail}\n\n<span class="prompt">you ›</span> <span class="cursor"></span></div></main>`;
-    const groupNames = [...new Set(sessions.map(s=>s.group))];
-    const groups = () => [...groupNames, ...(sessions.some(s=>!s.group)?['']:[])];
+    const boardOrder = [...new Set(sessions.map(s=>s.group).filter(Boolean)),''];
+    const groups = () => boardOrder;
     const activeSessions = () => sessions.filter(s=>s.state!=='archived');
     const visibleSessions = () => state.filter==='archive' ? sessions.filter(s=>s.state==='archived') : state.filter==='input' ? activeSessions().filter(s=>s.attention) : activeSessions();
     const card = s => `<article class="card ${state.selectedGroup===null&&s.id===state.selected?'selected':''}" data-preview="${s.id}"><i class="dot ${dotClass(s)}" style="display:inline-block"></i> <strong>${s.name}</strong><div class="meta">${s.harness} · ${s.age}</div><p>${stateLabel(s)}</p><div class="meta">${s.repo} · ${s.branch}</div><div class="progress"><i style="width:${s.context}%"></i></div><span class="context">context ${s.context}%</span></article>`;
     function shell() {
-      if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div>${state.showHelp?`<div class="hint"><kbd>?</kbd> close help · <kbd>F2</kbd> overlay · <kbd>←↑↓→</kbd>/<kbd>h j k l</kbd> navigate · <kbd>Enter</kbd> focus · <kbd>1</kbd> all · <kbd>2</kbd> needs input · <kbd>3</kbd> archive · <kbd>n</kbd> new Session · <kbd>g</kbd> new Group · <kbd>e</kbd> rename · <kbd>m</kbd> move Session · <kbd>o</kbd> order Groups · <kbd>f</kbd> finish/resume · <kbd>a</kbd> archive · <kbd>r</kbd> restore</div>`:''}`;
+      if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div>${state.showHelp?`<div class="hint"><kbd>?</kbd> close help · <kbd>F2</kbd> overlay · <kbd>←↑↓→</kbd>/<kbd>h j k l</kbd> navigate · <kbd>Shift+←/→</kbd> order Session · <kbd>Shift+↑/↓</kbd> move Session · <kbd>Ctrl+↑/↓</kbd> order Group · <kbd>Enter</kbd> focus · <kbd>1</kbd> all · <kbd>2</kbd> needs input · <kbd>3</kbd> archive · <kbd>n</kbd> new Session · <kbd>g</kbd> new Group · <kbd>e</kbd> rename · <kbd>f</kbd> finish/resume · <kbd>a</kbd> archive · <kbd>r</kbd> restore</div>`:''}`;
       if (variant === 'workspace') return state.inHarness ? `<div class="app">${terminal()}</div><div class="hint"><kbd>Esc</kbd> return to Session workspace · <kbd>r</kbd> previous Session</div>` : workspace();
     }
     function overview() {
       const visible=visibleSessions(), archived=state.filter==='archive';
       const blocks=groups().map((g,groupIndex)=>{
         const items=visible.filter(s=>s.group===g); if(!items.length && state.filter!=='all') return '';
-        const content=!items.length ? '<p class="meta">No Sessions. Press n to create one or m to move the selected Session here.</p>' : `<div class="grid">${items.map(card).join('')}</div>`;
-        return `<section class="group-block"><button class="group-head ${state.selectedGroup===g?'selected-group':''}" data-group-index="${groupIndex}"><strong>${groupTitle(g)}</strong><span>${items.length} Session${items.length===1?'':'s'}</span></button>${content}</section>`;
+        const empty=!items.length;
+        const content=empty ? '<p class="meta">No Sessions. Select this container and press n to create one here.</p>' : `<div class="grid">${items.map(card).join('')}</div>`;
+        const head=empty ? `<button class="group-head empty-group ${state.selectedGroup===g?'selected-group':''}" data-empty-group-index="${groupIndex}"><strong>${groupTitle(g)}</strong><span>Empty</span></button>` : `<div class="group-head"><strong>${groupTitle(g)}</strong><span>${items.length} Session${items.length===1?'':'s'}</span></div>`;
+        return `<section class="group-block">${head}${content}</section>`;
       }).join('');
-      return `<div class="overlay"><section class="overview"><div class="overview-head"><h1>Showing ${visible.length} of ${sessions.length} Sessions across ${groups().length} Groups <span class="notice">· ${activeSessions().filter(s=>s.attention).length} need input</span></h1><div class="filters"><button class="chip ${state.filter==='all'?'active':''}" data-filter="all">1 All</button><button class="chip ${state.filter==='input'?'active':''}" data-filter="input">2 Needs input</button><button class="chip ${state.filter==='archive'?'active':''}" data-filter="archive">3 Archive</button></div></div><div class="board-track">${blocks||'<p class="meta">No Sessions in this view.</p>'}</div></section></div>`;
+      return `<div class="overlay"><section class="overview"><div class="overview-head"><h1>Showing ${visible.length} of ${sessions.length} Sessions across ${boardOrder.length-1} Groups + Ungrouped <span class="notice">· ${activeSessions().filter(s=>s.attention).length} need input</span></h1><div class="filters"><button class="chip ${state.filter==='all'?'active':''}" data-filter="all">1 All</button><button class="chip ${state.filter==='input'?'active':''}" data-filter="input">2 Needs input</button><button class="chip ${state.filter==='archive'?'active':''}" data-filter="archive">3 Archive</button></div></div><div class="board-track">${blocks||'<p class="meta">No Sessions in this view.</p>'}</div></section></div>`;
     }
     function workspace() { return ''; }
     function render() {
       document.getElementById('root').innerHTML = shell() + (state.toast?`<div class="toast">${state.toast}</div>`:'');
       document.querySelectorAll('[data-session]').forEach(el => el.onclick=()=>select(el.dataset.session));
       document.querySelectorAll('[data-preview]').forEach(el => el.onclick=()=>preview(el.dataset.preview));
-      document.querySelectorAll('[data-group-index]').forEach(el => el.onclick=()=>{ state.selectedGroup=groups()[Number(el.dataset.groupIndex)]; render(); });
+      document.querySelectorAll('[data-empty-group-index]').forEach(el => el.onclick=()=>{ state.selectedGroup=groups()[Number(el.dataset.emptyGroupIndex)]; render(); });
       document.querySelectorAll('[data-filter]').forEach(el => el.onclick=()=>{ state.filter=el.dataset.filter; state.selectedGroup=null; const first=visibleSessions()[0]; if(first) state.selected=first.id; render(); });
       document.getElementById('focusSession')?.addEventListener('click', ()=>select(state.selected));
       document.getElementById('toggleFinished')?.addEventListener('click', toggleFinished);
@@ -148,17 +150,14 @@
     function jumpGroup(delta) { const names=groups(); let i=names.indexOf(current().group); const group=names[Math.max(0,Math.min(names.length-1,i+delta))]; state.selected=sessions.find(s=>s.group===group).id; render(); scrollSelected(); }
     function centerSelected() { document.querySelector('.overview .selected-group, .overview .card.selected, .drawer-list .session.selected, .workspace tr.selected')?.scrollIntoView({block:'center',inline:'center'}); }
     function scrollSelected() { centerSelected(); }
-    function moveOverview(direction) { const cards=[...document.querySelectorAll('.overview .card')]; const active=document.querySelector('.overview .card.selected')||cards[0]; if(!active) return; const a=active.getBoundingClientRect(), ax=a.left+a.width/2, ay=a.top+a.height/2; const candidates=cards.filter(c=>c!==active).map(c=>{const r=c.getBoundingClientRect(),dx=r.left+r.width/2-ax,dy=r.top+r.height/2-ay;const primary=direction==='left'?-dx:direction==='right'?dx:direction==='up'?-dy:dy;const cross=['left','right'].includes(direction)?Math.abs(dy):Math.abs(dx);return {c,primary,cross};}).filter(x=>x.primary>2).sort((x,y)=>(x.primary*10+x.cross)-(y.primary*10+y.cross)); if(!candidates.length)return; state.selected=candidates[0].c.dataset.preview; state.selectedGroup=null; render(); }
+    function moveOverview(direction) { const items=[...document.querySelectorAll('.overview .card, .overview .empty-group')]; const active=document.querySelector('.overview .card.selected, .overview .selected-group')||items[0]; if(!active) return; const a=active.getBoundingClientRect(), ax=a.left+a.width/2, ay=a.top+a.height/2; const candidates=items.filter(c=>c!==active).map(c=>{const r=c.getBoundingClientRect(),dx=r.left+r.width/2-ax,dy=r.top+r.height/2-ay;const primary=direction==='left'?-dx:direction==='right'?dx:direction==='up'?-dy:dy;const cross=['left','right'].includes(direction)?Math.abs(dy):Math.abs(dx);return {c,primary,cross};}).filter(x=>x.primary>2).sort((x,y)=>(x.primary*10+x.cross)-(y.primary*10+y.cross)); if(!candidates.length)return; const next=candidates[0].c; if(next.dataset.preview){state.selected=next.dataset.preview;state.selectedGroup=null;}else{state.selectedGroup=groups()[Number(next.dataset.emptyGroupIndex)];} render(); }
     function toggleFinished() { const s=current(); if(s.state==='finished'){s.state='idle';state.toast=`Resumed ${s.name} as Idle`;} else if(s.state!=='idle'){state.toast=`${s.name} is Working; wait for Idle before finishing`;} else {s.state='finished';s.attention=false;state.toast=`Finished ${s.name}`;} render(); }
-    function createGroup() { const name=prompt('Group name:','New Group')?.trim(); if(!name||groupNames.includes(name)) return; groupNames.push(name); state.selectedGroup=name; state.toast=`Created and selected Group ${name}`; render(); }
+    function createGroup() { const name=prompt('Group name:','New Group')?.trim(); if(!name||boardOrder.includes(name)) return; boardOrder.splice(boardOrder.length-1,0,name); state.selectedGroup=name; state.toast=`Created and selected Group ${name}`; render(); }
     function createSession() { const name=prompt('Session name (suggested, editable):','New Session')?.trim(); if(!name) return; const harnesses=['Claude Code','Codex']; const choice=prompt(`Choose Harness:\n${harnesses.map((harness,i)=>`${i+1}  ${harness}`).join('\n')}`,'2'); if(choice===null) return; const harness=harnesses[Number(choice)-1]; if(!harness) return; const group=state.selectedGroup!==null?state.selectedGroup:(current()?.group||''); sessions.push({id:`session-${Date.now()}`,name,group,state:'idle',harness,context:1,repo:'current repository',branch:'current branch',age:'now',detail:'New Session ready for its first instruction.'}); state.selected=sessions.at(-1).id; state.selectedGroup=null; state.filter='all'; state.toast=`Created ${name} in ${groupTitle(group)}`; render(); }
     function renameSession() { const s=current(),name=prompt('Session name:',s.name)?.trim(); if(name){s.name=name;state.toast=`Renamed to ${name}`;render();} }
-    function startMove() { state.moveFrom=current().group||''; state.toast='Move mode: ←/→ choose Group · Enter confirm · Esc cancel'; render(); }
-    function moveSession(delta) { const s=current(),targets=['',...groupNames],i=targets.indexOf(s.group||''); s.group=targets[(i+delta+targets.length)%targets.length]; state.toast=`Move to ${groupTitle(s.group)} · Enter confirm · Esc cancel`; render(); }
-    function finishMove(cancel=false) { const s=current(); if(cancel) s.group=state.moveFrom; state.moveFrom=undefined; state.toast=cancel?'Move cancelled':`Moved ${s.name} to ${groupTitle(s.group)}`; render(); }
-    function startReorder() { const group=state.selectedGroup!==null?state.selectedGroup:current().group; if(!group||!groupNames.includes(group)) return; state.selectedGroup=group; state.reorderFrom=[...groupNames]; state.toast='Order Groups: ↑/↓ move · Enter confirm · Esc cancel'; render(); }
-    function reorderGroup(delta) { const group=state.selectedGroup,i=groupNames.indexOf(group),next=Math.max(0,Math.min(groupNames.length-1,i+delta)); if(i===next) return; groupNames.splice(i,1); groupNames.splice(next,0,group); state.toast=`${group}: position ${next+1} of ${groupNames.length} · Enter confirm`; render(); }
-    function finishReorder(cancel=false) { if(cancel) groupNames.splice(0,groupNames.length,...state.reorderFrom); state.reorderFrom=undefined; state.toast=cancel?'Group order restored':`Group order saved`; render(); }
+    function reorderSession(delta) { const s=current(),siblings=sessions.filter(x=>x.group===s.group&&x.state!=='archived'),i=siblings.indexOf(s),next=Math.max(0,Math.min(siblings.length-1,i+delta)); if(i===next)return; const other=siblings[next],a=sessions.indexOf(s),b=sessions.indexOf(other); [sessions[a],sessions[b]]=[sessions[b],sessions[a]]; state.toast=`${s.name}: position ${next+1} in ${groupTitle(s.group)}`; render(); }
+    function moveSessionToGroup(delta) { const s=current(),i=boardOrder.indexOf(s.group||''),next=Math.max(0,Math.min(boardOrder.length-1,i+delta)); if(i===next)return; s.group=boardOrder[next]; state.toast=`Moved ${s.name} to ${groupTitle(s.group)}`; render(); }
+    function reorderGroup(delta) { const group=state.selectedGroup!==null?state.selectedGroup:(current().group||''),i=boardOrder.indexOf(group),next=Math.max(0,Math.min(boardOrder.length-1,i+delta)); if(i===next)return; boardOrder.splice(i,1); boardOrder.splice(next,0,group); state.toast=`${groupTitle(group)}: position ${next+1} on board`; render(); }
     function archiveSession() { const s=current(); s.beforeArchive=s.state; s.beforeArchiveAttention=!!s.attention; s.state='archived'; s.attention=false; state.toast=`Archived ${s.name}`; const next=visibleSessions()[0]; if(next) state.selected=next.id; render(); }
     function restoreSession() { const s=current(); if(s.state!=='archived') return; s.state=s.beforeArchive||'finished'; s.attention=!!s.beforeArchiveAttention; state.filter='all'; state.toast=`Restored ${s.name} to ${stateLabel(s)}`; render(); }
     function advanceFakeHarnesses() { const session=sessions.find(s=>s.state==='working'&&!s.attention); if(!session) return; session.state='idle'; session.attention=true; session.detail='The current turn completed. This Session is ready for your input.'; state.toast=`${session.name}: Idle · Needs input`; render(); }
@@ -166,12 +165,13 @@
       if(['INPUT','TEXTAREA'].includes(e.target.tagName)||e.target.isContentEditable) return;
       if(e.key==='r'&&!state.overlay&&state.previous) select(state.previous);
       if(e.key==='F2') { e.preventDefault(); state.overlay=!state.overlay; render(); return; }
-      if(state.moveFrom!==undefined) { if(['ArrowLeft','ArrowRight','h','l'].includes(e.key)){e.preventDefault();moveSession(['ArrowRight','l'].includes(e.key)?1:-1);} else if(e.key==='Enter'){e.preventDefault();finishMove();} else if(e.key==='Escape'){e.preventDefault();finishMove(true);} return; }
-      if(state.reorderFrom!==undefined) { if(['ArrowUp','ArrowDown','j','k'].includes(e.key)){e.preventDefault();reorderGroup(['ArrowDown','j'].includes(e.key)?1:-1);} else if(e.key==='Enter'){e.preventDefault();finishReorder();} else if(e.key==='Escape'){e.preventDefault();finishReorder(true);} return; }
       if(state.overlay && e.key==='?') { e.preventDefault(); state.showHelp=!state.showHelp; render(); return; }
       if(state.overlay && e.key==='Escape') { state.overlay=false; render(); }
-      if(variant==='overview' && state.overlay && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveOverview(e.key.replace('Arrow','').toLowerCase()); }
-      if(variant==='overview' && state.overlay && ['h','j','k','l'].includes(e.key)) moveOverview({h:'left',l:'right',k:'up',j:'down'}[e.key]);
+      if(variant==='overview' && state.overlay && state.selectedGroup===null && e.shiftKey && ['ArrowLeft','ArrowRight'].includes(e.key)) { e.preventDefault(); reorderSession(e.key==='ArrowRight'?1:-1); return; }
+      if(variant==='overview' && state.overlay && state.selectedGroup===null && e.shiftKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveSessionToGroup(e.key==='ArrowDown'?1:-1); return; }
+      if(variant==='overview' && state.overlay && e.ctrlKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); reorderGroup(e.key==='ArrowDown'?1:-1); return; }
+      if(variant==='overview' && state.overlay && !e.shiftKey && !e.ctrlKey && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveOverview(e.key.replace('Arrow','').toLowerCase()); }
+      if(variant==='overview' && state.overlay && !e.shiftKey && !e.ctrlKey && ['h','j','k','l'].includes(e.key)) moveOverview({h:'left',l:'right',k:'up',j:'down'}[e.key]);
       if(variant==='overview' && state.overlay && e.key==='t') { state.filter=state.filter==='all'?'input':'all'; render(); }
       if(state.overlay && e.key==='1') { state.filter='all'; render(); }
       if(state.overlay && e.key==='2') { state.filter='input'; render(); }
@@ -179,8 +179,6 @@
       if(state.overlay && e.key==='n') createSession();
       if(state.overlay && e.key==='g') createGroup();
       if(state.overlay && state.selectedGroup===null && e.key==='e') renameSession();
-      if(state.overlay && state.selectedGroup===null && e.key==='m') startMove();
-      if(state.overlay && e.key==='o') startReorder();
       if(state.overlay && state.selectedGroup===null && e.key==='f' && state.filter!=='archive') toggleFinished();
       if(state.overlay && state.selectedGroup===null && e.key==='a' && state.filter!=='archive') archiveSession();
       if(state.overlay && state.selectedGroup===null && e.key==='r' && state.filter==='archive') restoreSession();

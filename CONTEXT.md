@@ -16,10 +16,6 @@ _Avoid_: Provider, agent
 A user-defined collection of related sessions, independent of repository or directory boundaries. A session may belong to at most one group or remain ungrouped.
 _Avoid_: Mission, workspace, context
 
-**Section**:
-A named subdivision within a group that organizes the sessions displayed there. Initially, sections are formed automatically from session state; user-defined rules and nested sections are not yet specified.
-_Avoid_: Subgroup
-
 **Session name**:
 An automatically suggested, user-editable label by which a session is identified in the interface.
 
