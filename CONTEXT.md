@@ -12,6 +12,15 @@ _Avoid_: Run
 The coding-agent environment through which a session is started and operated, such as Claude Code or Codex.
 _Avoid_: Provider, agent
 
+**Harness conversation**:
+An independently resumable conversation that a Harness adapter exposes to Sessionary. A Session may be linked to multiple Harness conversations over its lifetime.
+
+**Harness conversation ID**:
+A stable, opaque identifier assigned by a Harness adapter to a Harness conversation. Its representation and mapping to Harness-native identifiers are adapter implementation details; Sessionary interprets it only together with the Harness adapter identity.
+
+**Conversation binding**:
+The association of one Harness conversation with one Session. A Session may have many conversation bindings, while a Harness conversation may be bound to at most one Session.
+
 **Group**:
 A user-defined collection of related sessions, independent of repository or directory boundaries. A session may belong to at most one group or remain ungrouped.
 _Avoid_: Mission, workspace, context
