@@ -28,5 +28,17 @@ _Avoid_: Mission, workspace, context
 **Session name**:
 An automatically suggested, user-editable label by which a session is identified in the interface.
 
-**Session state**:
-The single, mutually exclusive state of a Session: `Working`, `Idle`, `Needs input`, `Missing`, or `Finished`. `Needs input` includes a Harness waiting for the user or not reliably classifiable as `Working` or `Idle`; `Missing` means an expected live runtime disappeared; `Active` collectively describes `Working`, `Idle`, and `Needs input` rather than being another state.
+**Session runtime**:
+The live terminal execution environment in which a Session's Harness process runs.
+
+**Lifecycle status**:
+The durable status of a Session: `Active` or `Finished`. An `Active` Session is not intentionally finished and may have a live or missing runtime. A `Finished` Session was intentionally finished.
+
+**Runtime status**:
+Whether an `Active` Session's runtime is currently `Present` or `Missing`.
+
+**Harness status**:
+The current normalized Harness activity for a present runtime: `Working`, `Idle`, or `Needs input`. `Needs input` includes a Harness waiting for the user or not reliably classifiable as `Working` or `Idle`.
+
+**UI status**:
+The current status presented for a Session: `Loading`, `Working`, `Idle`, `Needs input`, `Missing`, or `Finished`. `Loading` means the status inputs required to derive another UI status are not yet available. A `Finished` lifecycle produces `Finished`; an `Active` lifecycle with a `Missing` runtime produces `Missing`; an `Active` lifecycle with a `Present` runtime uses its Harness status.
