@@ -30,7 +30,12 @@
     .meta { color:var(--muted); font-size:11px; margin-top:2px; }
     .context { color:var(--muted); font-size:11px; }
     .notice { color:var(--warn); }
-    .hint { position:fixed; top:10px; right:12px; max-width:min(720px,70vw); color:var(--muted); background:#0c1015ee; border:1px solid var(--line); border-radius:5px; padding:8px 10px; z-index:20; box-shadow:0 8px 24px #0008; }
+    .hint { position:fixed; top:10px; right:12px; width:min(760px,76vw); color:var(--muted); background:#0c1015f5; border:1px solid var(--line); border-radius:5px; padding:10px 12px; z-index:20; box-shadow:0 8px 24px #0008; }
+    .hint-head { display:flex; justify-content:space-between; gap:18px; color:var(--text); margin-bottom:8px; }
+    .frequency-map { display:grid; grid-template-columns:auto 1fr auto; gap:5px 12px; align-items:baseline; }
+    .frequency-map .rank { color:var(--accent); text-transform:uppercase; font-size:10px; letter-spacing:.06em; }
+    .frequency-map .keys { text-align:right; white-space:nowrap; }
+    .boundary-note { margin-top:9px; padding-top:8px; border-top:1px solid var(--line); font-size:11px; }
     .overlay { position:fixed; inset:0 0 58px; z-index:15; background:#080c10f2; display:grid; place-items:center; }
     .overview { width:min(1180px,94vw); height:calc(100vh - 100px); overflow:auto; padding:0 6px 36px; }
     .overview h1 { font-size:20px; }
@@ -114,8 +119,20 @@
     const visibleSessions = () => state.filter==='archive' ? sessions.filter(s=>s.state==='archived') : state.filter==='input' ? activeSessions().filter(s=>s.attention) : activeSessions();
     const card = s => `<article class="card ${state.selectedGroup===null&&s.id===state.selected?'selected':''}" data-preview="${s.id}"><i class="dot ${dotClass(s)}" style="display:inline-block"></i> <strong>${s.name}</strong><div class="meta">${s.harness} · ${s.age}</div><p>${stateLabel(s)}</p><div class="meta">${s.repo} · ${s.branch}</div><div class="progress"><i style="width:${s.context}%"></i></div><span class="context">context ${s.context}%</span></article>`;
     function shell() {
-      if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div>${state.showHelp?`<div class="hint"><kbd>?</kbd> close help · <kbd>F2</kbd> overlay · <kbd>←↑↓→</kbd>/<kbd>h j k l</kbd> navigate · <kbd>Shift+arrows</kbd> move Session spatially · <kbd>Ctrl+↑/↓</kbd> order Group · <kbd>Enter</kbd> focus · <kbd>1</kbd> all · <kbd>2</kbd> needs input · <kbd>3</kbd> archive · <kbd>n</kbd> new Session · <kbd>g</kbd> new Group · <kbd>e</kbd> rename · <kbd>f</kbd> finish/resume · <kbd>a</kbd> archive · <kbd>r</kbd> restore</div>`:''}`;
+      if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div>${state.showHelp?keyboardMap():''}`;
       if (variant === 'workspace') return state.inHarness ? `<div class="app">${terminal()}</div><div class="hint"><kbd>Esc</kbd> return to Session workspace · <kbd>r</kbd> previous Session</div>` : workspace();
+    }
+    function keyboardMap() {
+      return `<aside class="hint"><div class="hint-head"><strong>Frequency-ranked keyboard map</strong><span><kbd>?</kbd> close</span></div><div class="frequency-map">
+        <span class="rank">Very high</span><span>Harness ↔ board</span><span class="keys"><kbd>F2</kbd> open/close · <kbd>Esc</kbd> close</span>
+        <span class="rank">Very high</span><span>Select nearby Session or empty Group</span><span class="keys"><kbd>← ↑ ↓ →</kbd> or <kbd>h j k l</kbd></span>
+        <span class="rank">Very high</span><span>Focus selected Session</span><span class="keys"><kbd>Enter</kbd></span>
+        <span class="rank">High</span><span>All ↔ Needs input view</span><span class="keys"><kbd>1</kbd> all · <kbd>2</kbd> needs input</span>
+        <span class="rank">Medium</span><span>Create and lifecycle</span><span class="keys"><kbd>n</kbd> new Session · <kbd>f</kbd> finish/resume · <kbd>a</kbd> archive</span>
+        <span class="rank">Low</span><span>Maintenance views and labels</span><span class="keys"><kbd>3</kbd> archive · <kbd>r</kbd> restore · <kbd>e</kbd> rename · <kbd>g</kbd> new Group</span>
+        <span class="rank">Low</span><span>Rearrange selected Session spatially</span><span class="keys"><kbd>Alt</kbd> + arrows</span>
+        <span class="rank">Low</span><span>Reorder selected Group</span><span class="keys"><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>↑/↓</kbd></span>
+      </div><div class="boundary-note"><strong>Prototype boundary:</strong> the browser demonstrates semantics only. Production intercepts <kbd>F2</kbd> and modified arrows at the Sessionary/tmux boundary before the PTY sends them to the native Harness; browser or OS conflicts do not imply terminal infeasibility.</div></aside>`;
     }
     function overview() {
       const visible=visibleSessions(), archived=state.filter==='archive';
@@ -164,15 +181,13 @@
     function advanceFakeHarnesses() { const session=sessions.find(s=>s.state==='working'&&!s.attention); if(!session) return; session.state='idle'; session.attention=true; session.detail='The current turn completed. This Session is ready for your input.'; state.toast=`${session.name}: Idle · Needs input`; render(); }
     addEventListener('keydown', e => {
       if(['INPUT','TEXTAREA'].includes(e.target.tagName)||e.target.isContentEditable) return;
-      if(e.key==='r'&&!state.overlay&&state.previous) select(state.previous);
       if(e.key==='F2') { e.preventDefault(); state.overlay=!state.overlay; render(); return; }
       if(state.overlay && e.key==='?') { e.preventDefault(); state.showHelp=!state.showHelp; render(); return; }
       if(state.overlay && e.key==='Escape') { state.overlay=false; render(); }
-      if(variant==='overview' && state.overlay && state.selectedGroup===null && e.shiftKey && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveSessionSpatially(e.key.replace('Arrow','').toLowerCase()); return; }
-      if(variant==='overview' && state.overlay && e.ctrlKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); reorderGroup(e.key==='ArrowDown'?1:-1); return; }
-      if(variant==='overview' && state.overlay && !e.shiftKey && !e.ctrlKey && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveOverview(e.key.replace('Arrow','').toLowerCase()); }
-      if(variant==='overview' && state.overlay && !e.shiftKey && !e.ctrlKey && ['h','j','k','l'].includes(e.key)) moveOverview({h:'left',l:'right',k:'up',j:'down'}[e.key]);
-      if(variant==='overview' && state.overlay && e.key==='t') { state.filter=state.filter==='all'?'input':'all'; render(); }
+      if(variant==='overview' && state.overlay && e.altKey && e.shiftKey && ['ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); reorderGroup(e.key==='ArrowDown'?1:-1); return; }
+      if(variant==='overview' && state.overlay && state.selectedGroup===null && e.altKey && !e.shiftKey && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveSessionSpatially(e.key.replace('Arrow','').toLowerCase()); return; }
+      if(variant==='overview' && state.overlay && !e.altKey && !e.shiftKey && !e.ctrlKey && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveOverview(e.key.replace('Arrow','').toLowerCase()); }
+      if(variant==='overview' && state.overlay && !e.altKey && !e.shiftKey && !e.ctrlKey && ['h','j','k','l'].includes(e.key)) moveOverview({h:'left',l:'right',k:'up',j:'down'}[e.key]);
       if(state.overlay && e.key==='1') { state.filter='all'; render(); }
       if(state.overlay && e.key==='2') { state.filter='input'; render(); }
       if(state.overlay && e.key==='3') { state.filter='archive'; const first=visibleSessions()[0]; if(first) state.selected=first.id; render(); }
@@ -190,7 +205,7 @@
       if(e.key==='Enter' && state.overlay && state.selectedGroup===null) select(state.selected);
       if(e.key==='Enter' && variant==='workspace' && !state.inHarness) select(state.selected);
     });
-    addEventListener('keyup', e => { if(e.key==='Control'&&state.movingGroup!==null){state.movingGroup=null;render();} });
+    addEventListener('keyup', e => { if(e.key==='Alt'&&state.movingGroup!==null){state.movingGroup=null;render();} });
     render();
     setInterval(advanceFakeHarnesses,12000);
   </script>
