@@ -19,6 +19,17 @@ A span of Harness work initiated by a user instruction and ending when the Harne
 A user-defined collection of related sessions, independent of repository or directory boundaries. A session may belong to at most one group or remain ungrouped.
 _Avoid_: Mission, workspace, context
 
+**Board**:
+The ordered overview of Lanes through which Sessions are scanned, selected, created, and reorganized.
+_Avoid_: Layout, workspace
+
+**Lane**:
+A Board representation of either a Group or a system-defined collection of Sessions. A Lane participates uniformly in Board ordering and navigation without implying Group membership.
+_Avoid_: Group block
+
+**Ungrouped**:
+The absence of Group membership for a Session, presented on the board through a system-defined Lane.
+
 **Session name**:
 An automatically suggested, user-editable label by which a session is identified in the interface.
 
