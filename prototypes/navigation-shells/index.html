@@ -98,6 +98,7 @@
       {id:'secrets', name:'Rotate staging secrets', group:'Maintenance', state:'finished', harness:'Claude Code', context:18, repo:'ops', branch:'ops/secret-rotation', age:'3h', detail:'Rotation completed and old credentials revoked.'}
     ];
     let state = { selected:'auth', selectedGroup:null, previous:null, overlay:true, showHelp:false, toast:'', filter:'all', query:'', inHarness:false, drawerScroll:0, moveFrom:undefined, reorderFrom:undefined };
+    let toastTimer;
     const variant = 'overview';
     const current = () => sessions.find(s => s.id === state.selected);
     const stateLabel = s => s.attention ? 'Needs input · Idle' : s.state[0].toUpperCase()+s.state.slice(1);
@@ -137,6 +138,8 @@
       const drawerList=document.getElementById('drawerList');
       if(drawerList) { drawerList.scrollTop=state.drawerScroll; drawerList.addEventListener('scroll',()=>{ state.drawerScroll=drawerList.scrollTop; }); }
       if(state.overlay) requestAnimationFrame(centerSelected);
+      clearTimeout(toastTimer);
+      if(state.toast) toastTimer=setTimeout(()=>{ state.toast=''; render(); },2500);
     }
     function select(id) { if(id!==state.selected) state.previous=state.selected; state.selected=id; state.overlay=false; state.inHarness=variant==='workspace'; state.toast=`Focused ${current().name}`; render(); }
     function preview(id) { state.selected=id; state.selectedGroup=null; render(); }
