@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sessionary navigation-shell prototype</title>
   <style>
-    /* THROWAWAY PROTOTYPE: four Ungrouped Lane placements, switchable with ?variant=. */
+    /* THROWAWAY PROTOTYPE: five Ungrouped Lane placements, switchable with ?variant=. */
     :root { color-scheme: dark; --bg:#0c1015; --panel:#141b23; --line:#293442; --muted:#8794a3; --text:#e8edf2; --accent:#75d5b2; --warn:#ffca68; --dim:#1b242e; }
     * { box-sizing: border-box; }
     body { margin:0; height:100vh; overflow:hidden; background:var(--bg); color:var(--text); font:14px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace; }
@@ -105,9 +105,9 @@
     ];
     let state = { selected:'auth', selectedGroup:null, movingGroup:null, previous:null, overlay:true, showHelp:true, toast:'', filter:'all', query:'', inHarness:false, drawerScroll:0 };
     let toastTimer;
-    const variants = [['free','Freely reorderable'],['first','Pinned first'],['last','Pinned last'],['separate','Visually separated']];
-    let variant = new URLSearchParams(location.search).get('variant') || 'free';
-    if (!variants.some(v=>v[0]===variant)) variant='free';
+    const variants = [['separate-first','Separated + pinned top'],['free','Freely reorderable'],['first','Pinned first'],['last','Pinned last'],['separate','Visually separated']];
+    let variant = new URLSearchParams(location.search).get('variant') || 'separate-first';
+    if (!variants.some(v=>v[0]===variant)) variant='separate-first';
     let laneName = new URLSearchParams(location.search).get('name') === 'standalone' ? 'Standalone' : 'Ungrouped';
     const current = () => sessions.find(s => s.id === state.selected);
     const stateLabel = s => s.attention ? 'Needs input · Idle' : s.state[0].toUpperCase()+s.state.slice(1);
@@ -120,7 +120,7 @@
     const groups = () => {
       if(variant==='free') return boardOrder;
       const named=boardOrder.filter(Boolean);
-      if(variant==='first') return ['',...named];
+      if(variant==='first'||variant==='separate-first') return ['',...named];
       return [...named,''];
     };
     const activeSessions = () => sessions.filter(s=>s.state!=='archived');
@@ -136,7 +136,7 @@
         const empty=!items.length;
         const content=empty ? '<p class="meta">No Sessions. Select this container and press n to create one here.</p>' : `<div class="grid">${items.map(card).join('')}</div>`;
         const head=empty ? `<button class="group-head empty-group ${state.selectedGroup===g?'selected-group':''}" data-empty-group-index="${groupIndex}"><strong>${groupTitle(g)}</strong><span>Empty</span></button>` : `<div class="group-head"><strong>${groupTitle(g)}</strong><span>${items.length} Session${items.length===1?'':'s'}</span></div>`;
-        return `<section class="group-block ${g===''&&variant==='separate'?'system-lane':''} ${state.movingGroup===g?'moving-group':''}" data-board-group-index="${groupIndex}">${head}${content}</section>`;
+        return `<section class="group-block ${g===''&&['separate','separate-first'].includes(variant)?'system-lane':''} ${state.movingGroup===g?'moving-group':''}" data-board-group-index="${groupIndex}">${head}${content}</section>`;
       }).join('');
       return `<div class="overlay"><section class="overview"><div class="overview-head"><h1>Showing ${visible.length} of ${sessions.length} Sessions across ${boardOrder.length-1} Groups + ${laneName} <span class="notice">· ${activeSessions().filter(s=>s.attention).length} need input</span></h1><div class="filters"><button class="chip ${state.filter==='all'?'active':''}" data-filter="all">1 All</button><button class="chip ${state.filter==='input'?'active':''}" data-filter="input">2 Needs input</button><button class="chip ${state.filter==='archive'?'active':''}" data-filter="archive">3 Archive</button></div></div><div class="board-track">${blocks||'<p class="meta">No Sessions in this view.</p>'}</div></section></div>`;
     }
@@ -159,7 +159,7 @@
       clearTimeout(toastTimer);
       if(state.toast) toastTimer=setTimeout(()=>{ state.toast=''; render(); },2500);
     }
-    function prototypeSwitcher() { const i=variants.findIndex(v=>v[0]===variant); return `<nav class="prototype-switcher" aria-label="Prototype variants"><button id="prevVariant" aria-label="Previous placement">←</button><span>${variants[i][1]} (${i+1}/4)</span><button id="nextVariant" aria-label="Next placement">→</button><button id="toggleName">Label: ${laneName}</button></nav>`; }
+    function prototypeSwitcher() { const i=variants.findIndex(v=>v[0]===variant); return `<nav class="prototype-switcher" aria-label="Prototype variants"><button id="prevVariant" aria-label="Previous placement">←</button><span>${variants[i][1]} (${i+1}/${variants.length})</span><button id="nextVariant" aria-label="Next placement">→</button><button id="toggleName">Label: ${laneName}</button></nav>`; }
     function syncUrl() { history.replaceState({},'',`?variant=${variant}&name=${laneName.toLowerCase()}`); }
     function cycleVariant(delta) { const i=variants.findIndex(v=>v[0]===variant); variant=variants[(i+delta+variants.length)%variants.length][0]; state.movingGroup=null; syncUrl(); render(); }
     function select(id) { if(id!==state.selected) state.previous=state.selected; state.selected=id; state.overlay=false; state.inHarness=variant==='workspace'; state.toast=`Focused ${current().name}`; render(); }
