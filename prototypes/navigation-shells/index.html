@@ -94,7 +94,7 @@
       {id:'logs', name:'Reduce noisy API logs', group:'Maintenance', state:'working', harness:'Codex', context:61, repo:'web-api', branch:'chore/log-volume', age:'36m', detail:'Sampling repeated health-check and retry messages.'},
       {id:'secrets', name:'Rotate staging secrets', group:'Maintenance', state:'finished', harness:'Claude Code', context:18, repo:'ops', branch:'ops/secret-rotation', age:'3h', detail:'Rotation completed and old credentials revoked.'}
     ];
-    let state = { selected:'auth', previous:null, overlay:true, toast:'', filter:'all', query:'', inHarness:false, drawerScroll:0 };
+    let state = { selected:'auth', previous:null, overlay:true, toast:'', filter:'all', query:'', inHarness:false, drawerScroll:0, moveFrom:undefined };
     const variant = 'overview';
     const current = () => sessions.find(s => s.id === state.selected);
     const stateLabel = s => s.state === 'input' ? 'Needs input' : s.state[0].toUpperCase()+s.state.slice(1);
@@ -108,7 +108,7 @@
     const visibleSessions = () => state.filter==='archive' ? sessions.filter(s=>s.state==='archived') : state.filter==='input' ? activeSessions().filter(s=>s.state==='input') : activeSessions();
     const card = s => `<article class="card ${s.id===state.selected?'selected':''}" data-preview="${s.id}"><i class="dot ${s.state}" style="display:inline-block"></i> <strong>${s.name}</strong><div class="meta">${s.harness} · ${s.age}</div><p>${stateLabel(s)}</p><div class="meta">${s.repo} · ${s.branch}</div><div class="progress"><i style="width:${s.context}%"></i></div><span class="context">context ${s.context}%</span></article>`;
     function shell() {
-      if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div><div class="hint"><kbd>Ctrl+G</kbd> overlay · <kbd>←↑↓→</kbd>/<kbd>h j k l</kbd> navigate · <kbd>Enter</kbd> focus · <kbd>1</kbd> all · <kbd>2</kbd> needs input · <kbd>3</kbd> archive · <kbd>n</kbd> new Session · <kbd>g</kbd> new Group · <kbd>e</kbd> rename · <kbd>m</kbd> move · <kbd>f</kbd> finish/resume · <kbd>a</kbd> archive · <kbd>r</kbd> restore</div>`;
+      if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div><div class="hint"><kbd>Ctrl+G</kbd> overlay · <kbd>←↑↓→</kbd>/<kbd>h j k l</kbd> navigate · <kbd>Enter</kbd> focus · <kbd>1</kbd> all · <kbd>2</kbd> needs input · <kbd>3</kbd> archive · <kbd>n</kbd> new Session · <kbd>g</kbd> new Group · <kbd>e</kbd> rename · <kbd>m</kbd> move, then <kbd>←/→</kbd> Group · <kbd>f</kbd> finish/resume · <kbd>a</kbd> archive · <kbd>r</kbd> restore</div>`;
       if (variant === 'workspace') return state.inHarness ? `<div class="app">${terminal()}</div><div class="hint"><kbd>Esc</kbd> return to Session workspace · <kbd>r</kbd> previous Session</div>` : workspace();
     }
     function overview() {
@@ -141,16 +141,18 @@
     function moveOverview(direction) { const cards=[...document.querySelectorAll('.overview .card')]; const active=document.querySelector('.overview .card.selected')||cards[0]; if(!active) return; const a=active.getBoundingClientRect(), ax=a.left+a.width/2, ay=a.top+a.height/2; const candidates=cards.filter(c=>c!==active).map(c=>{const r=c.getBoundingClientRect(),dx=r.left+r.width/2-ax,dy=r.top+r.height/2-ay;const primary=direction==='left'?-dx:direction==='right'?dx:direction==='up'?-dy:dy;const cross=['left','right'].includes(direction)?Math.abs(dy):Math.abs(dx);return {c,primary,cross};}).filter(x=>x.primary>2).sort((x,y)=>(x.primary*10+x.cross)-(y.primary*10+y.cross)); if(!candidates.length)return; state.selected=candidates[0].c.dataset.preview; render(); document.querySelector('.overview .card.selected')?.scrollIntoView({block:'nearest'}); }
     function toggleFinished() { const s=current(); s.state=s.state==='finished'?'working':'finished'; state.toast=`${s.name}: ${stateLabel(s)}`; render(); }
     function createGroup() { const name=prompt('Group name:','New Group')?.trim(); if(!name||groupNames.includes(name)) return; groupNames.push(name); state.toast=`Created Group ${name}`; render(); }
-    function chooseGroup(currentGroup='') { const options=['No Group',...groupNames]; const initial=currentGroup?groupNames.indexOf(currentGroup)+1:0; const choice=prompt(`Choose Group:\n${options.map((name,i)=>`${i}  ${name}`).join('\n')}`,String(Math.max(0,initial))); if(choice===null) return undefined; const index=Number(choice); return Number.isInteger(index)&&index>=0&&index<options.length ? (index===0?'':groupNames[index-1]) : undefined; }
-    function createSession() { const harnesses=['Claude Code','Codex']; const choice=prompt(`Choose Harness:\n${harnesses.map((name,i)=>`${i+1}  ${name}`).join('\n')}`,'2'); if(choice===null) return; const harness=harnesses[Number(choice)-1]; if(!harness) return; const name=prompt('Session name (suggested, editable):',`New ${harness} Session`)?.trim(); if(!name) return; const group=chooseGroup(); if(group===undefined) return; sessions.push({id:`session-${Date.now()}`,name,group,state:'working',harness,context:1,repo:'current repository',branch:'current branch',age:'now',detail:'New Session ready for its first instruction.'}); state.selected=sessions.at(-1).id; state.filter='all'; state.toast=`Created ${name}`; render(); }
+    function createSession() { const harnesses=['Claude Code','Codex']; const choice=prompt(`Choose Harness:\n${harnesses.map((name,i)=>`${i+1}  ${name}`).join('\n')}`,'2'); if(choice===null) return; const harness=harnesses[Number(choice)-1]; if(!harness) return; const name=prompt('Session name (suggested, editable):',`New ${harness} Session`)?.trim(); if(!name) return; const group=current()?.group||''; sessions.push({id:`session-${Date.now()}`,name,group,state:'working',harness,context:1,repo:'current repository',branch:'current branch',age:'now',detail:'New Session ready for its first instruction.'}); state.selected=sessions.at(-1).id; state.filter='all'; state.toast=`Created ${name} in ${groupTitle(group)}`; render(); }
     function renameSession() { const s=current(),name=prompt('Session name:',s.name)?.trim(); if(name){s.name=name;state.toast=`Renamed to ${name}`;render();} }
-    function moveSession() { const s=current(),group=chooseGroup(s.group); if(group!==undefined){s.group=group;state.toast=`Moved ${s.name} to ${groupTitle(group)}`;render();} }
+    function startMove() { state.moveFrom=current().group||''; state.toast='Move mode: ←/→ choose Group · Enter confirm · Esc cancel'; render(); }
+    function moveSession(delta) { const s=current(),targets=['',...groupNames],i=targets.indexOf(s.group||''); s.group=targets[(i+delta+targets.length)%targets.length]; state.toast=`Move to ${groupTitle(s.group)} · Enter confirm · Esc cancel`; render(); document.querySelector('.overview .card.selected')?.scrollIntoView({block:'center'}); }
+    function finishMove(cancel=false) { const s=current(); if(cancel) s.group=state.moveFrom; state.moveFrom=undefined; state.toast=cancel?'Move cancelled':`Moved ${s.name} to ${groupTitle(s.group)}`; render(); }
     function archiveSession() { const s=current(); s.beforeArchive=s.state; s.state='archived'; state.toast=`Archived ${s.name}`; const next=visibleSessions()[0]; if(next) state.selected=next.id; render(); }
     function restoreSession() { const s=current(); if(s.state!=='archived') return; s.state=s.beforeArchive||'finished'; state.filter='all'; state.toast=`Restored ${s.name} to ${stateLabel(s)}`; render(); }
     addEventListener('keydown', e => {
       if(['INPUT','TEXTAREA'].includes(e.target.tagName)||e.target.isContentEditable) return;
       if(e.key==='r'&&!state.overlay&&state.previous) select(state.previous);
       if(e.ctrlKey && e.key.toLowerCase()==='g') { e.preventDefault(); state.overlay=!state.overlay; render(); return; }
+      if(state.moveFrom!==undefined) { if(['ArrowLeft','ArrowRight','h','l'].includes(e.key)){e.preventDefault();moveSession(['ArrowRight','l'].includes(e.key)?1:-1);} else if(e.key==='Enter'){e.preventDefault();finishMove();} else if(e.key==='Escape'){e.preventDefault();finishMove(true);} return; }
       if(state.overlay && e.key==='Escape') { state.overlay=false; render(); }
       if(variant==='overview' && state.overlay && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveOverview(e.key.replace('Arrow','').toLowerCase()); }
       if(variant==='overview' && state.overlay && ['h','j','k','l'].includes(e.key)) moveOverview({h:'left',l:'right',k:'up',j:'down'}[e.key]);
@@ -161,7 +163,7 @@
       if(state.overlay && e.key==='n') createSession();
       if(state.overlay && e.key==='g') createGroup();
       if(state.overlay && e.key==='e') renameSession();
-      if(state.overlay && e.key==='m') moveSession();
+      if(state.overlay && e.key==='m') startMove();
       if(state.overlay && e.key==='f' && state.filter!=='archive') toggleFinished();
       if(state.overlay && e.key==='a' && state.filter!=='archive') archiveSession();
       if(state.overlay && e.key==='r' && state.filter==='archive') restoreSession();
