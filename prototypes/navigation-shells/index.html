@@ -158,6 +158,7 @@
     function finishReorder(cancel=false) { if(cancel) groupNames.splice(0,groupNames.length,...state.reorderFrom); state.reorderFrom=undefined; state.toast=cancel?'Group order restored':`Group order saved`; render(); }
     function archiveSession() { const s=current(); s.beforeArchive=s.state; s.beforeArchiveAttention=!!s.attention; s.state='archived'; s.attention=false; state.toast=`Archived ${s.name}`; const next=visibleSessions()[0]; if(next) state.selected=next.id; render(); }
     function restoreSession() { const s=current(); if(s.state!=='archived') return; s.state=s.beforeArchive||'finished'; s.attention=!!s.beforeArchiveAttention; state.filter='all'; state.toast=`Restored ${s.name} to ${stateLabel(s)}`; render(); }
+    function advanceFakeHarnesses() { const session=sessions.find(s=>s.state==='working'&&!s.attention); if(!session) return; session.state='idle'; session.attention=true; session.detail='The current turn completed. This Session is ready for your input.'; state.toast=`${session.name}: Idle · Needs input`; render(); }
     addEventListener('keydown', e => {
       if(['INPUT','TEXTAREA'].includes(e.target.tagName)||e.target.isContentEditable) return;
       if(e.key==='r'&&!state.overlay&&state.previous) select(state.previous);
@@ -190,6 +191,7 @@
       if(e.key==='Enter' && variant==='workspace' && !state.inHarness) select(state.selected);
     });
     render();
+    setInterval(advanceFakeHarnesses,12000);
   </script>
 </body>
 </html>
