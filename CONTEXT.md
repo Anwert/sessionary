@@ -29,5 +29,11 @@ An active-list session whose current work has been explicitly marked complete bu
 **Archived session**:
 A session removed from normal active views because the user no longer expects to return to it.
 
-**Session state**:
-The session's current lifecycle or attention state: working, needs input, finished, or archived.
+**Session activity**:
+Whether an active session's harness is currently performing a turn (`Working`) or is alive without an active turn (`Idle`). Activity may be unknown when a harness cannot expose it reliably.
+
+**Needs input**:
+An attention signal on an Idle session indicating that the harness is waiting for a decision, approval, or instruction. It is not a lifecycle state.
+
+**Session lifecycle**:
+The user-managed status of a session: active, finished, or archived. A session may be marked Finished only while Idle; whether finishing should also terminate its live harness remains undecided.
