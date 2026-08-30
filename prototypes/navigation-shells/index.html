@@ -113,7 +113,7 @@
     const visibleSessions = () => state.filter==='archive' ? sessions.filter(s=>s.state==='archived') : state.filter==='input' ? activeSessions().filter(s=>s.attention) : activeSessions();
     const card = s => `<article class="card ${state.selectedGroup===null&&s.id===state.selected?'selected':''}" data-preview="${s.id}"><i class="dot ${dotClass(s)}" style="display:inline-block"></i> <strong>${s.name}</strong><div class="meta">${s.harness} · ${s.age}</div><p>${stateLabel(s)}</p><div class="meta">${s.repo} · ${s.branch}</div><div class="progress"><i style="width:${s.context}%"></i></div><span class="context">context ${s.context}%</span></article>`;
     function shell() {
-      if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div>${state.showHelp?`<div class="hint"><kbd>?</kbd> close help · <kbd>Ctrl+G</kbd> overlay · <kbd>←↑↓→</kbd>/<kbd>h j k l</kbd> navigate · <kbd>Enter</kbd> focus · <kbd>1</kbd> all · <kbd>2</kbd> needs input · <kbd>3</kbd> archive · <kbd>n</kbd> new Session · <kbd>g</kbd> new Group · <kbd>e</kbd> rename · <kbd>m</kbd> move Session · <kbd>o</kbd> order Groups · <kbd>f</kbd> finish/resume · <kbd>a</kbd> archive · <kbd>r</kbd> restore</div>`:''}`;
+      if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div>${state.showHelp?`<div class="hint"><kbd>?</kbd> close help · <kbd>F2</kbd> overlay · <kbd>←↑↓→</kbd>/<kbd>h j k l</kbd> navigate · <kbd>Enter</kbd> focus · <kbd>1</kbd> all · <kbd>2</kbd> needs input · <kbd>3</kbd> archive · <kbd>n</kbd> new Session · <kbd>g</kbd> new Group · <kbd>e</kbd> rename · <kbd>m</kbd> move Session · <kbd>o</kbd> order Groups · <kbd>f</kbd> finish/resume · <kbd>a</kbd> archive · <kbd>r</kbd> restore</div>`:''}`;
       if (variant === 'workspace') return state.inHarness ? `<div class="app">${terminal()}</div><div class="hint"><kbd>Esc</kbd> return to Session workspace · <kbd>r</kbd> previous Session</div>` : workspace();
     }
     function overview() {
@@ -165,7 +165,7 @@
     addEventListener('keydown', e => {
       if(['INPUT','TEXTAREA'].includes(e.target.tagName)||e.target.isContentEditable) return;
       if(e.key==='r'&&!state.overlay&&state.previous) select(state.previous);
-      if(e.ctrlKey && e.key.toLowerCase()==='g') { e.preventDefault(); state.overlay=!state.overlay; render(); return; }
+      if(e.key==='F2') { e.preventDefault(); state.overlay=!state.overlay; render(); return; }
       if(state.moveFrom!==undefined) { if(['ArrowLeft','ArrowRight','h','l'].includes(e.key)){e.preventDefault();moveSession(['ArrowRight','l'].includes(e.key)?1:-1);} else if(e.key==='Enter'){e.preventDefault();finishMove();} else if(e.key==='Escape'){e.preventDefault();finishMove(true);} return; }
       if(state.reorderFrom!==undefined) { if(['ArrowUp','ArrowDown','j','k'].includes(e.key)){e.preventDefault();reorderGroup(['ArrowDown','j'].includes(e.key)?1:-1);} else if(e.key==='Enter'){e.preventDefault();finishReorder();} else if(e.key==='Escape'){e.preventDefault();finishReorder(true);} return; }
       if(state.overlay && e.key==='?') { e.preventDefault(); state.showHelp=!state.showHelp; render(); return; }
