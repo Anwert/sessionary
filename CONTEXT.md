@@ -35,10 +35,10 @@ An active-list session whose current work has been explicitly marked complete bu
 A session removed from normal active views because the user no longer expects to return to it.
 
 **Session activity**:
-Whether an active session's harness is currently performing a turn (`Working`) or is alive without an active turn (`Idle`). Activity may be unknown when a harness cannot expose it reliably.
+The operational state of a live session: `Working`, `Idle`, or `Needs input`. There is no separate unknown state; when a harness cannot be classified reliably, the session is `Needs input`.
 
 **Needs input**:
-An attention signal on an Idle session indicating that the harness is waiting for a decision, approval, or instruction. It is not a lifecycle state.
+An operational state indicating that the harness is waiting for a decision, approval, or instruction, or that Sessionary cannot reliably classify it as `Working` or `Idle`.
 
 **Session lifecycle**:
-The user-managed status of a session: active, finished, or archived. A session may be marked Finished only while Idle; whether finishing should also terminate its live harness remains undecided.
+Whether a session is active or finished. `Active` collectively describes `Working`, `Idle`, and `Needs input`; `Finished` means the live Harness has been stopped. Finish is allowed from `Idle` or `Needs input`, never from `Working`; Resume returns a Finished Session to `Idle` after the Harness starts successfully. Delete is an operation, not a lifecycle state.
