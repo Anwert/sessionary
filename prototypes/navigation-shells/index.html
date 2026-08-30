@@ -97,7 +97,7 @@
       {id:'logs', name:'Reduce noisy API logs', group:'Maintenance', state:'working', harness:'Codex', context:61, repo:'web-api', branch:'chore/log-volume', age:'36m', detail:'Sampling repeated health-check and retry messages.'},
       {id:'secrets', name:'Rotate staging secrets', group:'Maintenance', state:'finished', harness:'Claude Code', context:18, repo:'ops', branch:'ops/secret-rotation', age:'3h', detail:'Rotation completed and old credentials revoked.'}
     ];
-    let state = { selected:'auth', selectedGroup:null, previous:null, overlay:true, showHelp:false, toast:'', filter:'all', query:'', inHarness:false, drawerScroll:0, moveFrom:undefined, reorderFrom:undefined };
+    let state = { selected:'auth', selectedGroup:null, previous:null, overlay:true, showHelp:true, toast:'', filter:'all', query:'', inHarness:false, drawerScroll:0, moveFrom:undefined, reorderFrom:undefined };
     let toastTimer;
     const variant = 'overview';
     const current = () => sessions.find(s => s.id === state.selected);
@@ -169,7 +169,6 @@
       if(state.moveFrom!==undefined) { if(['ArrowLeft','ArrowRight','h','l'].includes(e.key)){e.preventDefault();moveSession(['ArrowRight','l'].includes(e.key)?1:-1);} else if(e.key==='Enter'){e.preventDefault();finishMove();} else if(e.key==='Escape'){e.preventDefault();finishMove(true);} return; }
       if(state.reorderFrom!==undefined) { if(['ArrowUp','ArrowDown','j','k'].includes(e.key)){e.preventDefault();reorderGroup(['ArrowDown','j'].includes(e.key)?1:-1);} else if(e.key==='Enter'){e.preventDefault();finishReorder();} else if(e.key==='Escape'){e.preventDefault();finishReorder(true);} return; }
       if(state.overlay && e.key==='?') { e.preventDefault(); state.showHelp=!state.showHelp; render(); return; }
-      if(state.showHelp && e.key==='Escape') { state.showHelp=false; render(); return; }
       if(state.overlay && e.key==='Escape') { state.overlay=false; render(); }
       if(variant==='overview' && state.overlay && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveOverview(e.key.replace('Arrow','').toLowerCase()); }
       if(variant==='overview' && state.overlay && ['h','j','k','l'].includes(e.key)) moveOverview({h:'left',l:'right',k:'up',j:'down'}[e.key]);
