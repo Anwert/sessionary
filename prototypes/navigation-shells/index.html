@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sessionary navigation-shell prototype</title>
   <style>
-    /* THROWAWAY PROTOTYPE: four transient Session switcher forms, switchable with ?variant=. */
+    /* THROWAWAY PROTOTYPE: two grouped transient Session switcher forms, switchable with ?variant=. */
     :root { color-scheme: dark; --bg:#0c1015; --panel:#141b23; --line:#293442; --muted:#8794a3; --text:#e8edf2; --accent:#75d5b2; --warn:#ffca68; --dim:#1b242e; }
     * { box-sizing: border-box; }
     body { margin:0; height:100vh; overflow:hidden; background:var(--bg); color:var(--text); font:14px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace; }
@@ -45,13 +45,7 @@
     .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; }
     .card { padding:14px; border:1px solid var(--line); background:var(--panel); cursor:pointer; min-height:110px; }
     .card.selected { outline:2px solid var(--accent); }
-    .drawer { position:fixed; z-index:14; top:0; bottom:58px; width:min(520px,52vw); display:flex; flex-direction:column; overflow:hidden; }
-    .drawer.left { left:0; border-right:1px solid var(--line); box-shadow:20px 0 50px #0008; }
-    .drawer.right { right:0; border-left:1px solid var(--line); box-shadow:-20px 0 50px #0008; }
-    .drawer .session { padding:14px; }
     .drawer-list { min-height:0; flex:1; overflow-y:auto; scrollbar-gutter:stable; overscroll-behavior:contain; padding-bottom:12px; }
-    .drawer-detail { flex:0 0 auto; max-height:38%; overflow:auto; margin:0 12px 12px; padding:14px; border:1px solid var(--line); background:#0c1219; box-shadow:0 -12px 30px #0008; }
-    .drawer-detail h2 { margin:0 0 4px; font-size:15px; }
     .modal-backdrop { position:fixed; inset:0 0 58px; z-index:14; display:grid; place-items:start center; padding-top:9vh; background:#05080c99; }
     .modal { width:min(760px,88vw); max-height:72vh; display:grid; grid-template-columns:minmax(0,1fr) 280px; border:1px solid #536174; border-radius:10px; overflow:hidden; box-shadow:0 30px 90px #000d; }
     .modal-main { min-width:0; display:flex; flex-direction:column; overflow:hidden; }
@@ -76,7 +70,7 @@
     .workspace-detail h2 { margin:5px 0; }
     kbd { border:1px solid #657285; border-bottom-width:2px; border-radius:3px; padding:1px 5px; background:#202a35; }
     .toast { position:fixed; z-index:30; top:48px; left:50%; transform:translateX(-50%); padding:8px 12px; background:#332b19; color:var(--warn); border:1px solid #685a35; }
-    @media (max-width:900px) { .grid { grid-template-columns:repeat(2,1fr); } .drawer { width:85vw; } .modal { grid-template-columns:1fr; } .modal-detail { display:none; } .workspace { grid-template-columns:1fr; } .workspace-detail { display:none; } }
+    @media (max-width:900px) { .grid { grid-template-columns:repeat(2,1fr); } .modal { grid-template-columns:1fr; } .modal-detail { display:none; } .workspace { grid-template-columns:1fr; } .workspace-detail { display:none; } }
   </style>
 </head>
 <body>
@@ -84,8 +78,6 @@
   <script>
     const variants = [
       ['modal','A','Centered modal'],
-      ['left','B','Left drawer'],
-      ['right','C','Right drawer'],
       ['overview','D','Nearly fullscreen overlay']
     ];
     const sessions = [
@@ -127,14 +119,12 @@
     const terminal = (s=current()) => `<main class="terminal"><div class="term-head">${s.group} / ${s.name} · ${s.harness} · context ${s.context}%</div><div class="agent"><span class="prompt">assistant ›</span> ${s.detail}\n\n<span class="prompt">you ›</span> <span class="cursor"></span></div></main>`;
     const groups = [...new Set(sessions.map(s=>s.group))];
     function shell() {
-      if (variant === 'modal') return `<div class="app">${terminal()}${state.overlay?modal():''}</div><div class="hint"><kbd>Ctrl+G</kbd> switcher · type to search · <kbd>↑/↓</kbd> select · <kbd>Enter</kbd> focus</div>`;
-      if (variant === 'left' || variant === 'right') return `<div class="app">${terminal()}${state.overlay?drawer(variant):''}</div><div class="hint"><kbd>Ctrl+G</kbd> switcher · <kbd>↑/↓</kbd> select · <kbd>[ / ]</kbd> Group · <kbd>Enter</kbd> focus</div>`;
+      if (variant === 'modal') return `<div class="app">${terminal()}${state.overlay?modal():''}</div><div class="hint"><kbd>Ctrl+G</kbd> switcher · type to search · <kbd>↑/↓</kbd> select · <kbd>[ / ]</kbd> Group · <kbd>Enter</kbd> focus</div>`;
       if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div><div class="hint"><kbd>Ctrl+G</kbd> switcher · <kbd>←↑↓→</kbd> navigate grid · <kbd>Enter</kbd> focus · <kbd>t</kbd> attention</div>`;
       if (variant === 'workspace') return state.inHarness ? `<div class="app">${terminal()}</div><div class="hint"><kbd>Esc</kbd> return to Session workspace · <kbd>r</kbd> previous Session</div>` : workspace();
     }
     function overview() { const visible=state.filter==='input'?sessions.filter(s=>s.state==='input'):sessions; const blocks=groups.map(g=>{const items=visible.filter(s=>s.group===g); return items.length?`<section class="group-block"><div class="group-head"><strong>${g}</strong><span>${items.length} Session${items.length===1?'':'s'}</span></div><div class="grid">${items.map(s=>`<article class="card ${s.id===state.selected?'selected':''}" data-preview="${s.id}"><i class="dot ${s.state}" style="display:inline-block"></i> <strong>${s.name}</strong><div class="meta">${s.harness} · ${s.age}</div><p>${stateLabel(s)}</p><div class="meta">${s.repo} · ${s.branch}</div><div class="progress"><i style="width:${s.context}%"></i></div><span class="context">context ${s.context}%</span></article>`).join('')}</div></section>`:''}).join(''); return `<div class="overlay"><section class="overview"><div class="overview-head"><h1>${sessions.length} sessions across ${groups.length} Groups <span class="notice">· ${sessions.filter(s=>s.state==='input').length} need input</span></h1><div class="filters"><button class="chip ${state.filter==='all'?'active':''}" data-filter="all">1 All</button><button class="chip ${state.filter==='input'?'active':''}" data-filter="input">2 Needs input</button></div></div>${blocks}<div class="keyline"><kbd>←↑↓→</kbd> or <kbd>h/j/k/l</kbd> navigate spatially · <kbd>Enter</kbd> focus · <kbd>f</kbd> finish/resume</div></section></div>`; }
-    function modal() { const s=current(); const q=state.query.toLowerCase(); const visible=sessions.filter(x=>!q||`${x.name} ${x.group} ${x.repo}`.toLowerCase().includes(q)); return `<div class="modal-backdrop"><section class="modal panel"><div class="modal-main"><input class="modal-search" id="sessionSearch" value="${state.query}" placeholder="Search ${sessions.length} Sessions…"><div class="modal-list" id="drawerList">${visible.map(previewRow).join('')}</div></div><aside class="modal-detail"><div class="meta">${s.group}</div><h2>${s.name}</h2><p><i class="dot ${s.state}" style="display:inline-block"></i> ${stateLabel(s)}</p><div class="meta">${s.harness}<br>${s.repo} · ${s.branch}<br>active ${s.age}</div><div class="progress"><i style="width:${s.context}%"></i></div><p>${s.detail}</p><button class="chip" id="focusSession">Open Session</button><div class="keyline"><kbd>Esc</kbd> close</div></aside></section></div>`; }
-    function drawer(side) { const s=current(); const detailFirst=side==='right'; const detail=`<section class="drawer-detail"><div class="meta">Selected Session · ${sessions.findIndex(x=>x.id===s.id)+1} of ${sessions.length}</div><h2>${s.name}</h2><div class="meta">${s.repo} · ${s.branch} · active ${s.age}</div><div class="progress"><i style="width:${s.context}%"></i></div><p>${s.detail}</p><div class="actions"><button class="chip" id="focusSession">Enter focus</button><button class="chip" id="toggleFinished">${s.state==='finished'?'Resume':'Mark finished'}</button></div></section>`; const list=`<div class="drawer-list" id="drawerList">${groups.map(g=>`<div class="section-title">${g} · ${sessions.filter(s=>s.group===g).length}</div>${sessions.filter(s=>s.group===g).map(previewRow).join('')}`).join('')}</div>`; return `<aside class="drawer ${side} panel"><div class="brand">${side==='left'?'NAVIGATE SESSIONS':'SESSION INSPECTOR'} <span class="notice">· ${sessions.filter(s=>s.state==='input').length} need input</span></div>${detailFirst?detail+list:list+detail}<div class="keyline" style="padding:0 14px 12px"><kbd>↑/↓</kbd> select · <kbd>[ / ]</kbd> Group · <kbd>g/G</kbd> edges</div></aside>`; }
+    function modal() { const s=current(); const q=state.query.toLowerCase(); const visible=sessions.filter(x=>!q||`${x.name} ${x.group} ${x.repo}`.toLowerCase().includes(q)); const grouped=groups.map(g=>{const items=visible.filter(x=>x.group===g);return items.length?`<section><div class="section-title">${g} · ${items.length}</div>${items.map(previewRow).join('')}</section>`:''}).join(''); return `<div class="modal-backdrop"><section class="modal panel"><div class="modal-main"><input class="modal-search" id="sessionSearch" value="${state.query}" placeholder="Search ${sessions.length} Sessions…"><div class="modal-list" id="drawerList">${grouped}</div></div><aside class="modal-detail"><div class="meta">${s.group}</div><h2>${s.name}</h2><p><i class="dot ${s.state}" style="display:inline-block"></i> ${stateLabel(s)}</p><div class="meta">${s.harness}<br>${s.repo} · ${s.branch}<br>active ${s.age}</div><div class="progress"><i style="width:${s.context}%"></i></div><p>${s.detail}</p><button class="chip" id="focusSession">Open Session</button><div class="keyline"><kbd>[ / ]</kbd> jump Group · <kbd>Esc</kbd> close</div></aside></section></div>`; }
     function workspace() { const s=current(); const q=state.query.toLowerCase(); const visible=sessions.filter(x=>!q||`${x.name} ${x.group} ${x.repo} ${x.branch}`.toLowerCase().includes(q)); return `<div class="workspace"><main class="workspace-list"><div class="workspace-toolbar"><h1>Session workspace</h1><button class="chip ${state.filter==='all'?'active':''}" data-filter="all">All ${sessions.length}</button><button class="chip ${state.filter==='input'?'active':''}" data-filter="input">Needs input ${sessions.filter(x=>x.state==='input').length}</button><input class="search" id="sessionSearch" value="${state.query}" placeholder="Search sessions…"></div>${groups.map(g=>{const rows=visible.filter(x=>x.group===g&&(state.filter==='all'||x.state==='input'));return rows.length?`<section class="group-block"><div class="group-head"><strong>${g}</strong><span>${rows.length}</span></div><table class="table"><thead><tr><th>Session</th><th>State</th><th>Harness</th><th>Context</th><th>Active</th></tr></thead><tbody>${rows.map(x=>`<tr class="${x.id===state.selected?'selected':''}" data-preview="${x.id}"><td><strong>${x.name}</strong><div class="meta">${x.repo} · ${x.branch}</div></td><td><i class="dot ${x.state}" style="display:inline-block"></i> ${stateLabel(x)}</td><td>${x.harness}</td><td>${x.context}%</td><td>${x.age}</td></tr>`).join('')}</tbody></table></section>`:''}).join('')}</main><aside class="workspace-detail"><div class="meta">${s.group}</div><h2>${s.name}</h2><p><i class="dot ${s.state}" style="display:inline-block"></i> ${stateLabel(s)} · ${s.harness}</p><div class="meta">${s.repo}<br>${s.branch}<br>active ${s.age}</div><div class="progress"><i style="width:${s.context}%"></i></div><p>Context ${s.context}%</p><p>${s.detail}</p><div class="actions"><button class="chip" id="focusSession">Open native harness</button><button class="chip" id="toggleFinished">${s.state==='finished'?'Resume':'Mark finished'}</button></div><div class="keyline"><kbd>↑/↓</kbd> select · <kbd>[ / ]</kbd> Group · <kbd>Ctrl+u/d</kbd> half-page · <kbd>g/G</kbd> edges · <kbd>Enter</kbd> open</div></aside></div>`; }
     function switcher() { const i=variants.findIndex(v=>v[0]===variant), v=variants[i]; return `<nav class="switcher"><button id="prev" aria-label="Previous variant">←</button><span>${v[1]} · ${v[2]} (${i+1}/${variants.length})</span><button id="next" aria-label="Next variant">→</button></nav>`; }
     function render() {
@@ -167,10 +157,8 @@
       if(variant==='overview' && state.overlay && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveOverview(e.key.replace('Arrow','').toLowerCase()); }
       if(variant==='overview' && state.overlay && ['h','j','k','l'].includes(e.key)) moveOverview({h:'left',l:'right',k:'up',j:'down'}[e.key]);
       if(variant==='overview' && state.overlay && e.key==='t') { state.filter=state.filter==='all'?'input':'all'; render(); }
-      if(['modal','left','right'].includes(variant) && state.overlay && ['ArrowDown','ArrowUp','j','k'].includes(e.key) && !e.ctrlKey) { e.preventDefault(); move(['ArrowDown','j'].includes(e.key)?1:-1); }
-      if(['left','right'].includes(variant) && state.overlay && e.ctrlKey && ['u','d'].includes(e.key)) { e.preventDefault(); document.getElementById('drawerList')?.scrollBy({top:e.key==='d'?320:-320,behavior:'smooth'}); }
-      if(['left','right'].includes(variant) && state.overlay && ['[',']'].includes(e.key)) { e.preventDefault(); jumpGroup(e.key===']'?1:-1); }
-      if(['left','right'].includes(variant) && state.overlay && ['g','G'].includes(e.key)) { e.preventDefault(); jumpEdge(e.key==='G'); }
+      if(variant==='modal' && state.overlay && ['ArrowDown','ArrowUp','j','k'].includes(e.key) && !e.ctrlKey) { e.preventDefault(); move(['ArrowDown','j'].includes(e.key)?1:-1); }
+      if(variant==='modal' && state.overlay && ['[',']'].includes(e.key)) { e.preventDefault(); jumpGroup(e.key===']'?1:-1); }
       if(state.overlay && e.key==='f') toggleFinished();
       if(variant==='workspace' && !state.inHarness && ['ArrowDown','ArrowUp','j','k'].includes(e.key) && !e.ctrlKey) { e.preventDefault(); move(['ArrowDown','j'].includes(e.key)?1:-1); scrollSelected(); }
       if(variant==='workspace' && !state.inHarness && e.ctrlKey && ['u','d'].includes(e.key)) { e.preventDefault(); document.querySelector('.workspace-list')?.scrollBy({top:e.key==='d'?innerHeight/2:-innerHeight/2,behavior:'smooth'}); }
