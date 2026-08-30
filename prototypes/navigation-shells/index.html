@@ -39,6 +39,8 @@
     .chip.active { color:#10151b; background:var(--accent); }
     .group-block { margin:0 0 22px; }
     .group-head { position:sticky; top:0; z-index:1; display:flex; justify-content:space-between; padding:9px 3px; background:#080c10f2; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; }
+    .state-section { margin:0 0 12px; }
+    .state-head { display:flex; gap:8px; align-items:center; padding:5px 3px 7px; color:var(--muted); font-size:11px; letter-spacing:.07em; text-transform:uppercase; }
     .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; }
     .card { padding:14px; border:1px solid var(--line); background:var(--panel); cursor:pointer; min-height:110px; }
     .card.selected { outline:2px solid var(--accent); }
@@ -95,25 +97,39 @@
       {id:'secrets', name:'Rotate staging secrets', group:'Maintenance', state:'finished', harness:'Claude Code', context:18, repo:'ops', branch:'ops/secret-rotation', age:'3h', detail:'Rotation completed and old credentials revoked.'}
     ];
     let state = { selected:'auth', previous:null, overlay:true, toast:'', filter:'all', query:'', inHarness:false, drawerScroll:0 };
-    const params = new URLSearchParams(location.search);
     const variant = 'overview';
     const current = () => sessions.find(s => s.id === state.selected);
     const stateLabel = s => s.state === 'input' ? 'Needs input' : s.state[0].toUpperCase()+s.state.slice(1);
     const sessionRow = s => `<button class="session ${s.id===state.selected?'selected':''}" data-session="${s.id}"><i class="dot ${s.state}"></i><span>${s.name}<div class="meta">${s.harness} · ${stateLabel(s)}</div></span><span class="context">${s.context}%</span></button>`;
     const previewRow = s => `<button class="session ${s.id===state.selected?'selected':''}" data-preview="${s.id}"><i class="dot ${s.state}"></i><span>${s.name}<div class="meta">${s.harness} · ${stateLabel(s)}</div></span><span class="context">${s.context}%</span></button>`;
     const terminal = (s=current()) => `<main class="terminal"><div class="term-head">${s.group} / ${s.name} · ${s.harness} · context ${s.context}%</div><div class="agent"><span class="prompt">assistant ›</span> ${s.detail}\n\n<span class="prompt">you ›</span> <span class="cursor"></span></div></main>`;
-    const groups = [...new Set(sessions.map(s=>s.group))];
+    const groupNames = [...new Set(sessions.map(s=>s.group))];
+    const groups = () => groupNames;
+    const activeSessions = () => sessions.filter(s=>s.state!=='archived');
+    const visibleSessions = () => state.filter==='archive' ? sessions.filter(s=>s.state==='archived') : state.filter==='input' ? activeSessions().filter(s=>s.state==='input') : activeSessions();
+    const card = s => `<article class="card ${s.id===state.selected?'selected':''}" data-preview="${s.id}"><i class="dot ${s.state}" style="display:inline-block"></i> <strong>${s.name}</strong><div class="meta">${s.harness} · ${s.age}</div><p>${stateLabel(s)}</p><div class="meta">${s.repo} · ${s.branch}</div><div class="progress"><i style="width:${s.context}%"></i></div><span class="context">context ${s.context}%</span></article>`;
     function shell() {
       if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div><div class="hint"><kbd>Ctrl+G</kbd> switcher · <kbd>←↑↓→</kbd> navigate grid · <kbd>Enter</kbd> focus · <kbd>t</kbd> attention</div>`;
       if (variant === 'workspace') return state.inHarness ? `<div class="app">${terminal()}</div><div class="hint"><kbd>Esc</kbd> return to Session workspace · <kbd>r</kbd> previous Session</div>` : workspace();
     }
-    function overview() { const visible=state.filter==='input'?sessions.filter(s=>s.state==='input'):sessions; const blocks=groups.map(g=>{const items=visible.filter(s=>s.group===g); return items.length?`<section class="group-block"><div class="group-head"><strong>${g}</strong><span>${items.length} Session${items.length===1?'':'s'}</span></div><div class="grid">${items.map(s=>`<article class="card ${s.id===state.selected?'selected':''}" data-preview="${s.id}"><i class="dot ${s.state}" style="display:inline-block"></i> <strong>${s.name}</strong><div class="meta">${s.harness} · ${s.age}</div><p>${stateLabel(s)}</p><div class="meta">${s.repo} · ${s.branch}</div><div class="progress"><i style="width:${s.context}%"></i></div><span class="context">context ${s.context}%</span></article>`).join('')}</div></section>`:''}).join(''); return `<div class="overlay"><section class="overview"><div class="overview-head"><h1>${sessions.length} sessions across ${groups.length} Groups <span class="notice">· ${sessions.filter(s=>s.state==='input').length} need input</span></h1><div class="filters"><button class="chip ${state.filter==='all'?'active':''}" data-filter="all">1 All</button><button class="chip ${state.filter==='input'?'active':''}" data-filter="input">2 Needs input</button></div></div>${blocks}<div class="keyline"><kbd>←↑↓→</kbd> or <kbd>h/j/k/l</kbd> navigate spatially · <kbd>Enter</kbd> focus · <kbd>f</kbd> finish/resume</div></section></div>`; }
-    function workspace() { const s=current(); const q=state.query.toLowerCase(); const visible=sessions.filter(x=>!q||`${x.name} ${x.group} ${x.repo} ${x.branch}`.toLowerCase().includes(q)); return `<div class="workspace"><main class="workspace-list"><div class="workspace-toolbar"><h1>Session workspace</h1><button class="chip ${state.filter==='all'?'active':''}" data-filter="all">All ${sessions.length}</button><button class="chip ${state.filter==='input'?'active':''}" data-filter="input">Needs input ${sessions.filter(x=>x.state==='input').length}</button><input class="search" id="sessionSearch" value="${state.query}" placeholder="Search sessions…"></div>${groups.map(g=>{const rows=visible.filter(x=>x.group===g&&(state.filter==='all'||x.state==='input'));return rows.length?`<section class="group-block"><div class="group-head"><strong>${g}</strong><span>${rows.length}</span></div><table class="table"><thead><tr><th>Session</th><th>State</th><th>Harness</th><th>Context</th><th>Active</th></tr></thead><tbody>${rows.map(x=>`<tr class="${x.id===state.selected?'selected':''}" data-preview="${x.id}"><td><strong>${x.name}</strong><div class="meta">${x.repo} · ${x.branch}</div></td><td><i class="dot ${x.state}" style="display:inline-block"></i> ${stateLabel(x)}</td><td>${x.harness}</td><td>${x.context}%</td><td>${x.age}</td></tr>`).join('')}</tbody></table></section>`:''}).join('')}</main><aside class="workspace-detail"><div class="meta">${s.group}</div><h2>${s.name}</h2><p><i class="dot ${s.state}" style="display:inline-block"></i> ${stateLabel(s)} · ${s.harness}</p><div class="meta">${s.repo}<br>${s.branch}<br>active ${s.age}</div><div class="progress"><i style="width:${s.context}%"></i></div><p>Context ${s.context}%</p><p>${s.detail}</p><div class="actions"><button class="chip" id="focusSession">Open native harness</button><button class="chip" id="toggleFinished">${s.state==='finished'?'Resume':'Mark finished'}</button></div><div class="keyline"><kbd>↑/↓</kbd> select · <kbd>[ / ]</kbd> Group · <kbd>Ctrl+u/d</kbd> half-page · <kbd>g/G</kbd> edges · <kbd>Enter</kbd> open</div></aside></div>`; }
+    function overview() {
+      const visible=visibleSessions(), archived=state.filter==='archive';
+      const blocks=groups().map(g=>{
+        const items=visible.filter(s=>s.group===g); if(!items.length && state.filter!=='all') return '';
+        const sections=!items.length ? '<p class="meta">No Sessions. Press n to create one or m to move the selected Session here.</p>' : archived ? `<div class="grid">${items.map(card).join('')}</div>` : ['input','working','finished'].map(section=>{
+          const sectionItems=items.filter(s=>s.state===section); if(!sectionItems.length) return '';
+          return `<section class="state-section"><div class="state-head"><i class="dot ${section}"></i>${stateLabel(sectionItems[0])} · ${sectionItems.length}</div><div class="grid">${sectionItems.map(card).join('')}</div></section>`;
+        }).join('');
+        return `<section class="group-block"><div class="group-head"><strong>${g}</strong><span>${items.length} Session${items.length===1?'':'s'}</span></div>${sections}</section>`;
+      }).join('');
+      return `<div class="overlay"><section class="overview"><div class="overview-head"><h1>${activeSessions().length} sessions across ${groups().length} Groups <span class="notice">· ${activeSessions().filter(s=>s.state==='input').length} need input</span></h1><div class="filters"><button class="chip ${state.filter==='all'?'active':''}" data-filter="all">1 All</button><button class="chip ${state.filter==='input'?'active':''}" data-filter="input">2 Needs input</button><button class="chip ${state.filter==='archive'?'active':''}" data-filter="archive">3 Archive</button></div></div>${blocks||'<p class="meta">No Sessions in this view.</p>'}<div class="keyline"><kbd>n</kbd> new Session · <kbd>g</kbd> new Group · <kbd>e</kbd> rename · <kbd>m</kbd> move · <kbd>f</kbd> finish/resume · <kbd>a</kbd> archive · <kbd>r</kbd> restore</div></section></div>`;
+    }
+    function workspace() { return ''; }
     function render() {
       document.getElementById('root').innerHTML = shell() + (state.toast?`<div class="toast">${state.toast}</div>`:'');
       document.querySelectorAll('[data-session]').forEach(el => el.onclick=()=>select(el.dataset.session));
       document.querySelectorAll('[data-preview]').forEach(el => el.onclick=()=>preview(el.dataset.preview));
-      document.querySelectorAll('[data-filter]').forEach(el => el.onclick=()=>{ state.filter=el.dataset.filter; render(); });
+      document.querySelectorAll('[data-filter]').forEach(el => el.onclick=()=>{ state.filter=el.dataset.filter; const first=visibleSessions()[0]; if(first) state.selected=first.id; render(); });
       document.getElementById('focusSession')?.addEventListener('click', ()=>select(state.selected));
       document.getElementById('toggleFinished')?.addEventListener('click', toggleFinished);
       document.getElementById('sessionSearch')?.addEventListener('input', e=>{ state.query=e.target.value; render(); document.getElementById('sessionSearch')?.focus(); });
@@ -124,19 +140,34 @@
     function preview(id) { state.selected=id; render(); }
     function move(delta) { let i=sessions.findIndex(s=>s.id===state.selected); state.selected=sessions[(i+delta+sessions.length)%sessions.length].id; render(); document.querySelector('.drawer-list .session.selected')?.scrollIntoView({block:'nearest'}); }
     function jumpEdge(last=false) { state.selected=sessions[last?sessions.length-1:0].id; render(); scrollSelected(); }
-    function jumpGroup(delta) { let i=groups.indexOf(current().group); const group=groups[Math.max(0,Math.min(groups.length-1,i+delta))]; state.selected=sessions.find(s=>s.group===group).id; render(); scrollSelected(); }
+    function jumpGroup(delta) { const names=groups(); let i=names.indexOf(current().group); const group=names[Math.max(0,Math.min(names.length-1,i+delta))]; state.selected=sessions.find(s=>s.group===group).id; render(); scrollSelected(); }
     function scrollSelected() { document.querySelector('.drawer-list .session.selected, .workspace tr.selected')?.scrollIntoView({block:'center'}); }
     function moveOverview(direction) { const cards=[...document.querySelectorAll('.overview .card')]; const active=document.querySelector('.overview .card.selected')||cards[0]; if(!active) return; const a=active.getBoundingClientRect(), ax=a.left+a.width/2, ay=a.top+a.height/2; const candidates=cards.filter(c=>c!==active).map(c=>{const r=c.getBoundingClientRect(),dx=r.left+r.width/2-ax,dy=r.top+r.height/2-ay;const primary=direction==='left'?-dx:direction==='right'?dx:direction==='up'?-dy:dy;const cross=['left','right'].includes(direction)?Math.abs(dy):Math.abs(dx);return {c,primary,cross};}).filter(x=>x.primary>2).sort((x,y)=>(x.primary*10+x.cross)-(y.primary*10+y.cross)); if(!candidates.length)return; state.selected=candidates[0].c.dataset.preview; render(); document.querySelector('.overview .card.selected')?.scrollIntoView({block:'nearest'}); }
     function toggleFinished() { const s=current(); s.state=s.state==='finished'?'working':'finished'; state.toast=`${s.name}: ${stateLabel(s)}`; render(); }
+    function createGroup() { const name=prompt('Group name:','New Group')?.trim(); if(!name||groups().includes(name)) return; groupNames.push(name); state.toast=`Created Group ${name}`; render(); }
+    function createSession() { const harness=prompt('Harness (Claude Code or Codex):','Codex')?.trim(); if(!harness) return; const name=prompt('Session name (suggested, editable):',`New ${harness} Session`)?.trim(); if(!name) return; const group=prompt(`Group (${groups().join(', ')}):`,current()?.group||groups()[0])?.trim(); if(!group) return; if(!groups().includes(group)) groupNames.push(group); sessions.push({id:`session-${Date.now()}`,name,group,state:'working',harness,context:1,repo:'current repository',branch:'current branch',age:'now',detail:'New Session ready for its first instruction.'}); state.selected=sessions.at(-1).id; state.filter='all'; state.toast=`Created ${name}`; render(); }
+    function renameSession() { const s=current(),name=prompt('Session name:',s.name)?.trim(); if(name){s.name=name;state.toast=`Renamed to ${name}`;render();} }
+    function moveSession() { const s=current(),group=prompt(`Move to Group (${groups().join(', ')}):`,s.group)?.trim(); if(group){if(!groups().includes(group)) groupNames.push(group);s.group=group;state.toast=`Moved ${s.name} to ${group}`;render();} }
+    function archiveSession() { const s=current(); s.beforeArchive=s.state; s.state='archived'; state.toast=`Archived ${s.name}`; const next=visibleSessions()[0]; if(next) state.selected=next.id; render(); }
+    function restoreSession() { const s=current(); if(s.state!=='archived') return; s.state=s.beforeArchive||'finished'; state.filter='all'; state.toast=`Restored ${s.name} to ${stateLabel(s)}`; render(); }
     addEventListener('keydown', e => {
       if(['INPUT','TEXTAREA'].includes(e.target.tagName)||e.target.isContentEditable) return;
-      if(e.key==='r'&&state.previous) select(state.previous);
+      if(e.key==='r'&&!state.overlay&&state.previous) select(state.previous);
       if(e.ctrlKey && e.key.toLowerCase()==='g') { e.preventDefault(); state.overlay=!state.overlay; render(); }
       if(state.overlay && e.key==='Escape') { state.overlay=false; render(); }
       if(variant==='overview' && state.overlay && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveOverview(e.key.replace('Arrow','').toLowerCase()); }
       if(variant==='overview' && state.overlay && ['h','j','k','l'].includes(e.key)) moveOverview({h:'left',l:'right',k:'up',j:'down'}[e.key]);
       if(variant==='overview' && state.overlay && e.key==='t') { state.filter=state.filter==='all'?'input':'all'; render(); }
-      if(state.overlay && e.key==='f') toggleFinished();
+      if(state.overlay && e.key==='1') { state.filter='all'; render(); }
+      if(state.overlay && e.key==='2') { state.filter='input'; render(); }
+      if(state.overlay && e.key==='3') { state.filter='archive'; const first=visibleSessions()[0]; if(first) state.selected=first.id; render(); }
+      if(state.overlay && e.key==='n') createSession();
+      if(state.overlay && e.key==='g') createGroup();
+      if(state.overlay && e.key==='e') renameSession();
+      if(state.overlay && e.key==='m') moveSession();
+      if(state.overlay && e.key==='f' && state.filter!=='archive') toggleFinished();
+      if(state.overlay && e.key==='a' && state.filter!=='archive') archiveSession();
+      if(state.overlay && e.key==='r' && state.filter==='archive') restoreSession();
       if(variant==='workspace' && !state.inHarness && ['ArrowDown','ArrowUp','j','k'].includes(e.key) && !e.ctrlKey) { e.preventDefault(); move(['ArrowDown','j'].includes(e.key)?1:-1); scrollSelected(); }
       if(variant==='workspace' && !state.inHarness && e.ctrlKey && ['u','d'].includes(e.key)) { e.preventDefault(); document.querySelector('.workspace-list')?.scrollBy({top:e.key==='d'?innerHeight/2:-innerHeight/2,behavior:'smooth'}); }
       if(variant==='workspace' && !state.inHarness && ['[',']'].includes(e.key)) { e.preventDefault(); jumpGroup(e.key===']'?1:-1); }
