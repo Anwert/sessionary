@@ -148,7 +148,7 @@
     addEventListener('keydown', e => {
       if(['INPUT','TEXTAREA'].includes(e.target.tagName)||e.target.isContentEditable) return;
       if(e.key==='r'&&!state.overlay&&state.previous) select(state.previous);
-      if(e.ctrlKey && e.key.toLowerCase()==='g') { e.preventDefault(); state.overlay=!state.overlay; render(); }
+      if(e.ctrlKey && e.key.toLowerCase()==='g') { e.preventDefault(); state.overlay=!state.overlay; render(); return; }
       if(state.overlay && e.key==='Escape') { state.overlay=false; render(); }
       if(variant==='overview' && state.overlay && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) { e.preventDefault(); moveOverview(e.key.replace('Arrow','').toLowerCase()); }
       if(variant==='overview' && state.overlay && ['h','j','k','l'].includes(e.key)) moveOverview({h:'left',l:'right',k:'up',j:'down'}[e.key]);
