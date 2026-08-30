@@ -29,7 +29,7 @@
     .meta { color:var(--muted); font-size:11px; margin-top:2px; }
     .context { color:var(--muted); font-size:11px; }
     .notice { color:var(--warn); }
-    .hint { position:fixed; top:10px; right:12px; color:var(--muted); background:#0c1015dd; border:1px solid var(--line); border-radius:5px; padding:6px 9px; z-index:20; }
+    .hint { position:fixed; top:10px; right:12px; max-width:min(720px,70vw); color:var(--muted); background:#0c1015ee; border:1px solid var(--line); border-radius:5px; padding:8px 10px; z-index:20; box-shadow:0 8px 24px #0008; }
     .overlay { position:fixed; inset:0 0 58px; z-index:15; background:#080c10f2; display:grid; place-items:center; }
     .overview { width:min(1180px,94vw); height:calc(100vh - 100px); overflow:auto; padding:0 6px 36px; }
     .overview h1 { font-size:20px; }
@@ -107,7 +107,7 @@
     const visibleSessions = () => state.filter==='archive' ? sessions.filter(s=>s.state==='archived') : state.filter==='input' ? activeSessions().filter(s=>s.state==='input') : activeSessions();
     const card = s => `<article class="card ${s.id===state.selected?'selected':''}" data-preview="${s.id}"><i class="dot ${s.state}" style="display:inline-block"></i> <strong>${s.name}</strong><div class="meta">${s.harness} · ${s.age}</div><p>${stateLabel(s)}</p><div class="meta">${s.repo} · ${s.branch}</div><div class="progress"><i style="width:${s.context}%"></i></div><span class="context">context ${s.context}%</span></article>`;
     function shell() {
-      if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div><div class="hint"><kbd>Ctrl+G</kbd> switcher · <kbd>←↑↓→</kbd> navigate grid · <kbd>Enter</kbd> focus · <kbd>t</kbd> attention</div>`;
+      if (variant === 'overview') return `<div class="app">${terminal()}${state.overlay?overview():''}</div><div class="hint"><kbd>Ctrl+G</kbd> overlay · <kbd>←↑↓→</kbd>/<kbd>h j k l</kbd> navigate · <kbd>Enter</kbd> focus · <kbd>1</kbd> all · <kbd>2</kbd> needs input · <kbd>3</kbd> archive · <kbd>n</kbd> new Session · <kbd>g</kbd> new Group · <kbd>e</kbd> rename · <kbd>m</kbd> move · <kbd>f</kbd> finish/resume · <kbd>a</kbd> archive · <kbd>r</kbd> restore</div>`;
       if (variant === 'workspace') return state.inHarness ? `<div class="app">${terminal()}</div><div class="hint"><kbd>Esc</kbd> return to Session workspace · <kbd>r</kbd> previous Session</div>` : workspace();
     }
     function overview() {
@@ -117,7 +117,7 @@
         const content=!items.length ? '<p class="meta">No Sessions. Press n to create one or m to move the selected Session here.</p>' : `<div class="grid">${items.map(card).join('')}</div>`;
         return `<section class="group-block"><div class="group-head"><strong>${g}</strong><span>${items.length} Session${items.length===1?'':'s'}</span></div>${content}</section>`;
       }).join('');
-      return `<div class="overlay"><section class="overview"><div class="overview-head"><h1>Showing ${visible.length} of ${sessions.length} Sessions across ${groups().length} Groups <span class="notice">· ${activeSessions().filter(s=>s.state==='input').length} need input</span></h1><div class="filters"><button class="chip ${state.filter==='all'?'active':''}" data-filter="all">1 All</button><button class="chip ${state.filter==='input'?'active':''}" data-filter="input">2 Needs input</button><button class="chip ${state.filter==='archive'?'active':''}" data-filter="archive">3 Archive</button></div></div>${blocks||'<p class="meta">No Sessions in this view.</p>'}<div class="keyline"><kbd>n</kbd> new Session · <kbd>g</kbd> new Group · <kbd>e</kbd> rename · <kbd>m</kbd> move · <kbd>f</kbd> finish/resume · <kbd>a</kbd> archive · <kbd>r</kbd> restore</div></section></div>`;
+      return `<div class="overlay"><section class="overview"><div class="overview-head"><h1>Showing ${visible.length} of ${sessions.length} Sessions across ${groups().length} Groups <span class="notice">· ${activeSessions().filter(s=>s.state==='input').length} need input</span></h1><div class="filters"><button class="chip ${state.filter==='all'?'active':''}" data-filter="all">1 All</button><button class="chip ${state.filter==='input'?'active':''}" data-filter="input">2 Needs input</button><button class="chip ${state.filter==='archive'?'active':''}" data-filter="archive">3 Archive</button></div></div>${blocks||'<p class="meta">No Sessions in this view.</p>'}</section></div>`;
     }
     function workspace() { return ''; }
     function render() {
