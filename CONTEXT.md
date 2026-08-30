@@ -12,6 +12,9 @@ _Avoid_: Run
 The coding-agent environment through which a session is started and operated, such as Claude Code or Codex.
 _Avoid_: Provider, agent
 
+**Turn**:
+A span of Harness work initiated by a user instruction and ending when the Harness completes or fails its response. A Turn may pause while the Harness needs a decision, approval, or further instruction from the user.
+
 **Group**:
 A user-defined collection of related sessions, independent of repository or directory boundaries. A session may belong to at most one group or remain ungrouped.
 _Avoid_: Mission, workspace, context
